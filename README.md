@@ -28,7 +28,7 @@ This indexer is the consensus engine that powers the entire ecosystem, transform
 
 Simplicity is architected around a modular **OPI (Operation Proposal Improvement)** framework. This design separates the core indexing engine from the specific logic of each protocol, allowing the system to be extended safely and efficiently.
 
-![Simplicity](simplicity.png)
+![Simplicity](simplicity.jpg)
 
 ### How the OPI Framework Works
 
