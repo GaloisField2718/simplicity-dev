@@ -28,37 +28,7 @@ This indexer is the consensus engine that powers the entire ecosystem, transform
 
 Simplicity is architected around a modular **OPI (Operation Proposal Improvement)** framework. This design separates the core indexing engine from the specific logic of each protocol, allowing the system to be extended safely and efficiently.
 
-```mermaid
-graph TD;
-    subgraph Bitcoin Layer
-        BTC[Bitcoin Core Node<br>(txindex=1)]
-    end
-
-    subgraph Indexer Core
-        A[Indexer Engine] -->|Fetch & Parse Blocks| B{OPI Router}
-        B -->|op='deploy'| D[BRC-20 Legacy Processor]
-        B -->|op='mint'| D
-        B -->|op='transfer'| D
-        B -->|op='no_return'| C[OPI-0 Processor]
-        B -->|op='swap'| E[OPI-1 Swap Processor]
-    end
-
-    subgraph State & API
-        I[PostgreSQL<br>(State Database)]
-        J[FastAPI Server]
-        K[Redis<br>(Cache)]
-    end
-
-    BTC --> A
-    D --> I
-    C --> I
-    E --> I
-    I <--> J
-    J <--> K
-
-    style C fill:#d4fada,stroke:#333,stroke-width:2px
-    style E fill:#f9f,stroke:#333,stroke-width:2px
-```
+![Simplicity](simplicity.png)
 
 ### How the OPI Framework Works
 
