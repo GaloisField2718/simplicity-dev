@@ -86,10 +86,7 @@ class TestDeployValidationFix(unittest.TestCase):
             {
                 "scriptPubKey": {
                     "type": "witness_v1_taproot",
-                    "addresses": [
-                        "bc1pce89e8b7bb468aa1a228f2cec7081e77b4f18b9de24eeff"
-                        "cdd66a7ea257b5de3"
-                    ],
+                    "addresses": ["bc1pce89e8b7bb468aa1a228f2cec7081e77b4f18b9de24eeff" "cdd66a7ea257b5de3"],
                 },
                 "value": 0.00000546,
             },
@@ -114,10 +111,7 @@ class TestDeployValidationFix(unittest.TestCase):
             {
                 "scriptPubKey": {
                     "type": "witness_v1_taproot",
-                    "addresses": [
-                        "bc1pce89e8b7bb468aa1a228f2cec7081e77b4f18b9de24eeff"
-                        "cdd66a7ea257b5de3"
-                    ],
+                    "addresses": ["bc1pce89e8b7bb468aa1a228f2cec7081e77b4f18b9de24eeff" "cdd66a7ea257b5de3"],
                 },
                 "value": 0.00000546,
             },

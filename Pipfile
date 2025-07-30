@@ -23,6 +23,8 @@ autoflake = "*"
 isort = "*"
 pytest = "*"
 httpx = "*"
+pytest-cov = "*"
+async-timeout = "*"
 
 [dev-packages]
 pytest = "*"
@@ -37,4 +39,4 @@ safety = "*"
 pre-commit = "*"
 
 [requires]
-python_version = ">=3.11,<3.12"
+python_version = "3.11"

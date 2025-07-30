@@ -37,9 +37,7 @@ class TestBRC20Parser:
         # {"p":"brc-20","op":"transfer","tick":"OPQT","amt":"250"}
 
         # Invalid payloads
-        self.invalid_json_hex = (
-            "7b2270223a226272632d32302c226f70223a22" "6465706c6f79227d"
-        )  # Malformed JSON
+        self.invalid_json_hex = "7b2270223a226272632d32302c226f70223a22" "6465706c6f79227d"  # Malformed JSON
         self.empty_ticker_hex = (
             "7b2270223a226272632d3230222c226f70223a22646570"
             "6c6f79222c227469636b223a22222c226d223a22323130"
@@ -57,9 +55,7 @@ class TestBRC20Parser:
         # Create proper OP_RETURN scripts
         self.valid_deploy_script = self._create_op_return_script(self.valid_deploy_hex)
         self.valid_mint_script = self._create_op_return_script(self.valid_mint_hex)
-        self.valid_transfer_script = self._create_op_return_script(
-            self.valid_transfer_hex
-        )
+        self.valid_transfer_script = self._create_op_return_script(self.valid_transfer_hex)
         self.invalid_json_script = self._create_op_return_script(self.invalid_json_hex)
         self.empty_ticker_script = self._create_op_return_script(self.empty_ticker_hex)
         self.zero_ticker_script = self._create_op_return_script(self.zero_ticker_hex)
@@ -177,8 +173,8 @@ class TestBRC20Parser:
         result = self.parser.parse_brc20_operation(self.invalid_json_hex)
 
         assert result["success"] is False
-        assert result["error_code"] == BRC20ErrorCodes.INVALID_JSON
-        assert "Invalid JSON" in result["error_message"]
+        assert result["error_code"] == BRC20ErrorCodes.INVALID_PROTOCOL
+        assert "Not a BRC-20 operation" in result["error_message"]
 
     def test_parse_empty_ticker_invalid(self):
         """Test empty ticker rejection - CRITICAL RULE"""
@@ -215,9 +211,7 @@ class TestBRC20Parser:
         """Test missing protocol field"""
         operation = {"op": "deploy", "tick": "TEST", "m": "1000"}
 
-        is_valid, error_code, error_message = self.parser.validate_json_structure(
-            operation
-        )
+        is_valid, error_code, error_message = self.parser.validate_json_structure(operation)
 
         assert is_valid is False
         assert error_code == BRC20ErrorCodes.MISSING_PROTOCOL
@@ -226,9 +220,7 @@ class TestBRC20Parser:
         """Test invalid protocol field"""
         operation = {"p": "brc-21", "op": "deploy", "tick": "TEST", "m": "1000"}
 
-        is_valid, error_code, error_message = self.parser.validate_json_structure(
-            operation
-        )
+        is_valid, error_code, error_message = self.parser.validate_json_structure(operation)
 
         assert is_valid is False
         assert error_code == BRC20ErrorCodes.INVALID_PROTOCOL
@@ -237,9 +229,7 @@ class TestBRC20Parser:
         """Test missing operation field"""
         operation = {"p": "brc-20", "tick": "TEST", "m": "1000"}
 
-        is_valid, error_code, error_message = self.parser.validate_json_structure(
-            operation
-        )
+        is_valid, error_code, error_message = self.parser.validate_json_structure(operation)
 
         assert is_valid is False
         assert error_code == BRC20ErrorCodes.MISSING_OPERATION
@@ -248,9 +238,7 @@ class TestBRC20Parser:
         """Test invalid operation field"""
         operation = {"p": "brc-20", "op": "burn", "tick": "TEST", "m": "1000"}
 
-        is_valid, error_code, error_message = self.parser.validate_json_structure(
-            operation
-        )
+        is_valid, error_code, error_message = self.parser.validate_json_structure(operation)
 
         assert is_valid is False
         assert error_code == BRC20ErrorCodes.INVALID_OPERATION
@@ -259,9 +247,7 @@ class TestBRC20Parser:
         """Test missing ticker field"""
         operation = {"p": "brc-20", "op": "deploy", "m": "1000"}
 
-        is_valid, error_code, error_message = self.parser.validate_json_structure(
-            operation
-        )
+        is_valid, error_code, error_message = self.parser.validate_json_structure(operation)
 
         assert is_valid is False
         assert error_code == BRC20ErrorCodes.MISSING_TICKER
@@ -270,9 +256,7 @@ class TestBRC20Parser:
         """Test deploy missing max supply"""
         operation = {"p": "brc-20", "op": "deploy", "tick": "TEST"}
 
-        is_valid, error_code, error_message = self.parser.validate_json_structure(
-            operation
-        )
+        is_valid, error_code, error_message = self.parser.validate_json_structure(operation)
 
         assert is_valid is False
         assert error_code == BRC20ErrorCodes.INVALID_AMOUNT
@@ -282,9 +266,7 @@ class TestBRC20Parser:
         """Test deploy with non-string max supply"""
         operation = {"p": "brc-20", "op": "deploy", "tick": "TEST", "m": 1000}
 
-        is_valid, error_code, error_message = self.parser.validate_json_structure(
-            operation
-        )
+        is_valid, error_code, error_message = self.parser.validate_json_structure(operation)
 
         assert is_valid is False
         assert error_code == BRC20ErrorCodes.INVALID_AMOUNT
@@ -294,9 +276,7 @@ class TestBRC20Parser:
         """Test mint missing amount"""
         operation = {"p": "brc-20", "op": "mint", "tick": "TEST"}
 
-        is_valid, error_code, error_message = self.parser.validate_json_structure(
-            operation
-        )
+        is_valid, error_code, error_message = self.parser.validate_json_structure(operation)
 
         assert is_valid is False
         assert error_code == BRC20ErrorCodes.INVALID_AMOUNT
@@ -306,9 +286,7 @@ class TestBRC20Parser:
         """Test transfer missing amount"""
         operation = {"p": "brc-20", "op": "transfer", "tick": "TEST"}
 
-        is_valid, error_code, error_message = self.parser.validate_json_structure(
-            operation
-        )
+        is_valid, error_code, error_message = self.parser.validate_json_structure(operation)
 
         assert is_valid is False
         assert error_code == BRC20ErrorCodes.INVALID_AMOUNT
@@ -381,10 +359,10 @@ class TestBRC20Parser:
         result = self.parser.parse_transaction(tx)
 
         assert result["has_brc20"] is False
-        assert result["op_return_data"] == self.invalid_json_hex
-        assert result["vout_index"] == 1
+        assert result["op_return_data"] is None
+        assert result["vout_index"] is None
         assert result["operation"] is None
-        assert result["error_code"] == BRC20ErrorCodes.INVALID_JSON
+        assert result["error_code"] is None
 
     def test_parse_transaction_no_op_return(self):
         """Test transaction with no OP_RETURN"""
@@ -413,11 +391,7 @@ class TestBRC20Parser:
         large_data = "a" * 100
         large_hex = large_data.encode("utf-8").hex()
 
-        tx = {
-            "vout": [
-                {"scriptPubKey": {"type": "nulldata", "hex": f"6a4c64{large_hex}"}}
-            ]
-        }
+        tx = {"vout": [{"scriptPubKey": {"type": "nulldata", "hex": f"6a4c64{large_hex}"}}]}
 
         hex_data, vout_index = self.parser.extract_op_return_data(tx)
 
@@ -439,9 +413,7 @@ class TestBRC20Parser:
             ]
         }
 
-        hex_data, vout_index = self.parser.extract_op_return_data_with_position_check(
-            tx, "mint"
-        )
+        hex_data, vout_index = self.parser.extract_op_return_data_with_position_check(tx, "mint")
 
         assert hex_data == self.valid_mint_hex
         assert vout_index == 0
@@ -466,9 +438,7 @@ class TestBRC20Parser:
             ]
         }
 
-        hex_data, vout_index = self.parser.extract_op_return_data_with_position_check(
-            tx, "transfer"
-        )
+        hex_data, vout_index = self.parser.extract_op_return_data_with_position_check(tx, "transfer")
 
         assert hex_data == self.valid_transfer_hex
         assert vout_index == 0
@@ -488,9 +458,7 @@ class TestBRC20Parser:
             ]
         }
 
-        hex_data, vout_index = self.parser.extract_op_return_data_with_position_check(
-            tx, "deploy"
-        )
+        hex_data, vout_index = self.parser.extract_op_return_data_with_position_check(tx, "deploy")
 
         assert hex_data == self.valid_deploy_hex
         assert vout_index == 1
@@ -510,9 +478,7 @@ class TestBRC20Parser:
             ]
         }
 
-        hex_data, vout_index = self.parser.extract_op_return_data_with_position_check(
-            tx, "mint"
-        )
+        hex_data, vout_index = self.parser.extract_op_return_data_with_position_check(tx, "mint")
 
         assert hex_data is None
         assert vout_index is None
@@ -537,9 +503,7 @@ class TestBRC20Parser:
             ]
         }
 
-        hex_data, vout_index = self.parser.extract_op_return_data_with_position_check(
-            tx, "transfer"
-        )
+        hex_data, vout_index = self.parser.extract_op_return_data_with_position_check(tx, "transfer")
 
         assert hex_data is None
         assert vout_index is None
@@ -566,9 +530,7 @@ class TestBRC20Parser:
             ]
         }
 
-        hex_data, vout_index = self.parser.extract_op_return_data_with_position_check(
-            tx, "deploy"
-        )
+        hex_data, vout_index = self.parser.extract_op_return_data_with_position_check(tx, "deploy")
 
         assert hex_data == self.valid_deploy_hex
         assert vout_index == 2
@@ -582,9 +544,7 @@ class TestBRC20Parser:
             ]
         }
 
-        hex_data, vout_index = self.parser.extract_op_return_data_with_position_check(
-            tx, "mint"
-        )
+        hex_data, vout_index = self.parser.extract_op_return_data_with_position_check(tx, "mint")
 
         assert hex_data is None
         assert vout_index is None

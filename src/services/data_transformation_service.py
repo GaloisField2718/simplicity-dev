@@ -1,6 +1,5 @@
+from typing import Dict, List, Optional, Any
 from datetime import datetime
-from typing import Any, Dict, List, Optional
-
 import structlog
 
 logger = structlog.get_logger()
@@ -23,9 +22,7 @@ class DataTransformationService:
             "deploy_tx_id": backend_data.get("deploy_txid"),
             "actual_deploy_txid_for_api": backend_data.get("deploy_txid"),
             "deploy_block_height": backend_data.get("deploy_height"),
-            "deploy_timestamp": DataTransformationService._format_timestamp(
-                backend_data.get("deploy_time")
-            ),
+            "deploy_timestamp": DataTransformationService._format_timestamp(backend_data.get("deploy_time")),
             "creator_address": backend_data.get("deployer"),
             "remaining_supply": DataTransformationService._calculate_remaining_supply(
                 backend_data.get("max"), backend_data.get("minted")
@@ -50,9 +47,7 @@ class DataTransformationService:
             "block_height": backend_data.get("height"),
             "block_hash": backend_data.get("block_hash", ""),
             "tx_index": backend_data.get("tx_index"),
-            "timestamp": DataTransformationService._format_timestamp(
-                backend_data.get("time")
-            ),
+            "timestamp": DataTransformationService._format_timestamp(backend_data.get("time")),
             "address": backend_data.get("from_address"),
             "processed": backend_data.get("is_valid"),
             "valid": backend_data.get("is_valid"),
@@ -137,9 +132,7 @@ class DataTransformationService:
             elif isinstance(timestamp, datetime):
                 return timestamp.isoformat() + "Z"
         except Exception as e:
-            logger.warning(
-                "Failed to format timestamp", timestamp=timestamp, error=str(e)
-            )
+            logger.warning("Failed to format timestamp", timestamp=timestamp, error=str(e))
             return None
 
         return None

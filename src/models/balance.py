@@ -1,10 +1,8 @@
-from sqlalchemy import Column, DateTime, Integer, String, UniqueConstraint
-from sqlalchemy.orm import Session
+from sqlalchemy import Column, Integer, String, DateTime, UniqueConstraint
 from sqlalchemy.sql import func
-
-from src.utils.amounts import add_amounts, compare_amounts, subtract_amounts
-
+from sqlalchemy.orm import Session
 from .base import Base
+from src.utils.amounts import add_amounts, subtract_amounts, compare_amounts
 
 
 class Balance(Base):
@@ -22,11 +20,7 @@ class Balance(Base):
     def get_or_create(cls, session: Session, address: str, ticker: str) -> "Balance":
         """Get or create balance (atomic)"""
         normalized_ticker = ticker.upper() if ticker else ticker
-        balance = (
-            session.query(cls)
-            .filter_by(address=address, ticker=normalized_ticker)
-            .first()
-        )
+        balance = session.query(cls).filter_by(address=address, ticker=normalized_ticker).first()
         if not balance:
             balance = cls(address=address, ticker=normalized_ticker, balance="0")
             session.add(balance)
@@ -50,9 +44,5 @@ class Balance(Base):
         from sqlalchemy import func
 
         normalized_ticker = ticker.upper() if ticker else ticker
-        result = (
-            session.query(func.sum(cls.balance))
-            .filter_by(ticker=normalized_ticker)
-            .scalar()
-        )
+        result = session.query(func.sum(cls.balance)).filter_by(ticker=normalized_ticker).scalar()
         return result or "0"

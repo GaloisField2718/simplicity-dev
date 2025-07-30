@@ -19,11 +19,9 @@ def is_valid_amount(amount_str: str) -> bool:
     if not isinstance(amount_str, str):
         return False
 
-    # Allow integers and decimals (no scientific notation)
     if not re.match(r"^[0-9]+(\.[0-9]+)?$", amount_str):
         return False
 
-    # Check if it's positive (not zero)
     try:
         amount = float(amount_str)
         return amount > 0
@@ -50,15 +48,12 @@ def add_amounts(a: str, b: str) -> str:
     if not is_valid_amount(b) and b != "0":
         raise ValueError(f"Invalid amount: {b}")
 
-    # Use Decimal for precise arithmetic
     from decimal import Decimal, getcontext
 
-    # Set precision high enough for large numbers
     getcontext().prec = 50
 
     result = Decimal(a) + Decimal(b)
 
-    # Format without scientific notation
     return format(result, "f")
 
 
@@ -81,10 +76,8 @@ def subtract_amounts(a: str, b: str) -> str:
     if not is_valid_amount(b) and b != "0":
         raise ValueError(f"Invalid amount: {b}")
 
-    # Use Decimal for precise arithmetic
     from decimal import Decimal, getcontext
 
-    # Set precision high enough for large numbers
     getcontext().prec = 50
 
     a_dec = Decimal(a)
@@ -116,7 +109,6 @@ def compare_amounts(a: str, b: str) -> int:
     if not is_valid_amount(b) and b != "0":
         raise ValueError(f"Invalid amount: {b}")
 
-    # Use Decimal for precise comparison
     from decimal import Decimal
 
     a_dec = Decimal(a)
@@ -168,10 +160,8 @@ def normalize_amount(amount_str: str) -> str:
     if not isinstance(amount_str, str):
         raise ValueError("Amount must be string")
 
-    # Remove leading zeros but keep at least one digit
     normalized = amount_str.lstrip("0") or "0"
 
-    # Validate the result
     if not re.match(r"^[0-9]+$", normalized):
         raise ValueError(f"Invalid amount format: {amount_str}")
 

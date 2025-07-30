@@ -64,9 +64,7 @@ def test_non_brc20_op_return_handling(processor):
         "vin": [],
     }
 
-    result = processor.process_transaction(
-        tx_info, 100, 0, 1609459200, "test_block_hash"
-    )  # 2021-01-01 timestamp
+    result = processor.process_transaction(tx_info, 100, 0, 1609459200, "test_block_hash")  # 2021-01-01 timestamp
 
     assert not result.operation_found
     assert not result.is_valid
@@ -82,8 +80,7 @@ def test_valid_json_invalid_protocol_handling(processor):
             {
                 "n": 0,
                 "scriptPubKey": {
-                    "hex": "6a047b2270223a226272632d3231222c226f70223a22"
-                    "6465706c6f79227d",
+                    "hex": "6a047b2270223a226272632d3231222c226f70223a22" "6465706c6f79227d",
                     "asm": 'OP_RETURN { "p": "brc-21", "op": "deploy" }',
                 },
             },
@@ -98,9 +95,7 @@ def test_valid_json_invalid_protocol_handling(processor):
         "vin": [],
     }
 
-    result = processor.process_transaction(
-        tx_info, 100, 0, 1609459200, "test_block_hash"
-    )  # 2021-01-01 timestamp
+    result = processor.process_transaction(tx_info, 100, 0, 1609459200, "test_block_hash")  # 2021-01-01 timestamp
 
     assert not result.operation_found
     assert not result.is_valid
@@ -128,9 +123,7 @@ def test_non_json_op_return_handling(processor):
         "vin": [],
     }
 
-    result = processor.process_transaction(
-        tx_info, 100, 0, 1609459200, "test_block_hash"
-    )  # 2021-01-01 timestamp
+    result = processor.process_transaction(tx_info, 100, 0, 1609459200, "test_block_hash")  # 2021-01-01 timestamp
 
     assert not result.operation_found
     assert not result.is_valid
@@ -149,8 +142,7 @@ def test_valid_brc20_op_is_processed(processor):
                     "hex": "6a4c4e7b2270223a20226272632d3230222c226f70223a2264"
                     "65706c6f79222c20227469636b223a202254455354222c2022"
                     "6d223a202231303030222c20226c223a2022313030227d",
-                    "asm": 'OP_RETURN { "p": "brc-20", "op": "deploy", "tick": '
-                    '"TEST", "m": "1000", "l": "100" }',
+                    "asm": 'OP_RETURN { "p": "brc-20", "op": "deploy", "tick": ' '"TEST", "m": "1000", "l": "100" }',
                 },
             },
             {
@@ -183,14 +175,10 @@ def test_valid_brc20_op_is_processed(processor):
         }
     )
 
-    processor.validator.validate_complete_operation = MagicMock(
-        return_value=ValidationResult(True, None, None)
-    )
+    processor.validator.validate_complete_operation = MagicMock(return_value=ValidationResult(True, None, None))
     processor.process_deploy = MagicMock()
 
-    result = processor.process_transaction(
-        tx_info, 100, 0, 1609459200, "test_block_hash"
-    )  # 2021-01-01 timestamp
+    result = processor.process_transaction(tx_info, 100, 0, 1609459200, "test_block_hash")  # 2021-01-01 timestamp
 
     assert result.operation_found
     assert result.is_valid
@@ -214,9 +202,7 @@ def test_no_op_return_handling(processor):
         "vin": [],
     }
 
-    result = processor.process_transaction(
-        tx_info, 100, 0, 1609459200, "test_block_hash"
-    )  # 2021-01-01 timestamp
+    result = processor.process_transaction(tx_info, 100, 0, 1609459200, "test_block_hash")  # 2021-01-01 timestamp
 
     assert not result.operation_found
     assert not result.is_valid

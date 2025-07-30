@@ -96,9 +96,7 @@ class TestBRC20Validator:
         mock_deploy.limit_per_op = "1000"
         mock_deploy.max_supply = "21000000"
 
-        self.mock_db_session.query.return_value.filter.return_value.scalar.return_value = (  # noqa: E501
-            1000000
-        )
+        self.mock_db_session.query.return_value.filter.return_value.scalar.return_value = 1000000  # noqa: E501
 
         operation = {"tick": "OPQT", "amt": "2000"}
 
@@ -116,9 +114,7 @@ class TestBRC20Validator:
         mock_deploy.limit_per_op = "1000"
         mock_deploy.max_supply = "21000000"
 
-        self.mock_db_session.query.return_value.filter.return_value.scalar.return_value = (  # noqa: E501
-            20999999
-        )
+        self.mock_db_session.query.return_value.filter.return_value.scalar.return_value = 20999999  # noqa: E501
 
         operation = {"tick": "OPQT", "amt": "500"}
 
@@ -138,9 +134,7 @@ class TestBRC20Validator:
 
         sender_balance = "1000"
 
-        result = self.validator.validate_transfer(
-            operation, sender_balance, mock_deploy
-        )
+        result = self.validator.validate_transfer(operation, sender_balance, mock_deploy)
 
         assert result.is_valid is True
         assert result.error_code is None
@@ -154,9 +148,7 @@ class TestBRC20Validator:
 
         sender_balance = "1000"
 
-        result = self.validator.validate_transfer(
-            operation, sender_balance, mock_deploy
-        )
+        result = self.validator.validate_transfer(operation, sender_balance, mock_deploy)
 
         assert result.is_valid is False
         assert result.error_code == BRC20ErrorCodes.INSUFFICIENT_BALANCE
@@ -183,9 +175,7 @@ class TestBRC20Validator:
 
         sender_balance = "1000"
 
-        result = self.validator.validate_transfer(
-            operation, sender_balance, mock_deploy
-        )
+        result = self.validator.validate_transfer(operation, sender_balance, mock_deploy)
 
         assert result.is_valid is True
         assert result.error_code is None
@@ -246,9 +236,7 @@ class TestBRC20Validator:
 
     def test_get_current_supply(self):
         """Test getting current supply"""
-        self.mock_db_session.query.return_value.filter.return_value.scalar.return_value = (  # noqa: E501
-            1000000
-        )
+        self.mock_db_session.query.return_value.filter.return_value.scalar.return_value = 1000000  # noqa: E501
         self.mock_db_session.func = Mock()
         self.mock_db_session.BigInteger = Mock()
 
@@ -260,34 +248,24 @@ class TestBRC20Validator:
         """Test getting balance for address and ticker"""
         mock_balance = Mock()
         mock_balance.balance = "500"
-        self.mock_db_session.query.return_value.filter.return_value.first.return_value = (  # noqa: E501
-            mock_balance
-        )
+        self.mock_db_session.query.return_value.filter.return_value.first.return_value = mock_balance  # noqa: E501
 
-        balance = self.validator.get_balance(
-            "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa", "OPQT"
-        )
+        balance = self.validator.get_balance("1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa", "OPQT")
 
         assert balance == "500"
 
     def test_get_balance_not_found(self):
         """Test getting balance when record not found"""
-        self.mock_db_session.query.return_value.filter.return_value.first.return_value = (  # noqa: E501
-            None
-        )
+        self.mock_db_session.query.return_value.filter.return_value.first.return_value = None  # noqa: E501
 
-        balance = self.validator.get_balance(
-            "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa", "OPQT"
-        )
+        balance = self.validator.get_balance("1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa", "OPQT")
 
         assert balance == "0"
 
     def test_get_deploy_record(self):
         """Test getting deploy record"""
         mock_deploy = Mock()
-        self.mock_db_session.query.return_value.filter.return_value.first.return_value = (  # noqa: E501
-            mock_deploy
-        )
+        self.mock_db_session.query.return_value.filter.return_value.first.return_value = mock_deploy  # noqa: E501
 
         deploy = self.validator.get_deploy_record("OPQT")
 
@@ -295,9 +273,7 @@ class TestBRC20Validator:
 
     def test_validate_complete_operation_deploy(self):
         """Test complete operation validation for deploy"""
-        self.mock_db_session.query.return_value.filter.return_value.first.return_value = (  # noqa: E501
-            None
-        )
+        self.mock_db_session.query.return_value.filter.return_value.first.return_value = None  # noqa: E501
 
         operation = {"op": "deploy", "tick": "OPQT", "m": "21000000", "l": "1000"}
 
@@ -324,9 +300,7 @@ class TestBRC20Validator:
         mock_deploy.max_supply = "21000000"
         mock_deploy.limit_per_op = "1000"
 
-        self.mock_db_session.query.return_value.filter.return_value.scalar.return_value = (  # noqa: E501
-            20999624
-        )
+        self.mock_db_session.query.return_value.filter.return_value.scalar.return_value = 20999624  # noqa: E501
 
         operation = {"tick": "OPQT", "amt": "1000"}
 
@@ -344,9 +318,7 @@ class TestBRC20Validator:
         mock_deploy.max_supply = "21000000"
         mock_deploy.limit_per_op = "1000"
 
-        self.mock_db_session.query.return_value.filter.return_value.scalar.return_value = (  # noqa: E501
-            20999624
-        )
+        self.mock_db_session.query.return_value.filter.return_value.scalar.return_value = 20999624  # noqa: E501
 
         operation = {"tick": "OPQT", "amt": "376"}
 
@@ -362,9 +334,7 @@ class TestBRC20Validator:
         mock_deploy.max_supply = "21000000"
         mock_deploy.limit_per_op = "1000"
 
-        self.mock_db_session.query.return_value.filter.return_value.scalar.return_value = (  # noqa: E501
-            21000000
-        )
+        self.mock_db_session.query.return_value.filter.return_value.scalar.return_value = 21000000  # noqa: E501
 
         operation = {"tick": "OPQT", "amt": "1"}
 
@@ -375,9 +345,7 @@ class TestBRC20Validator:
 
     def test_get_total_minted_calculation(self):
         """Test total minted calculation from database"""
-        self.mock_db_session.query.return_value.filter.return_value.scalar.return_value = (  # noqa: E501
-            5000000
-        )
+        self.mock_db_session.query.return_value.filter.return_value.scalar.return_value = 5000000  # noqa: E501
 
         total = self.validator.get_total_minted("OPQT")
 
@@ -386,9 +354,7 @@ class TestBRC20Validator:
 
     def test_get_total_minted_no_mints(self):
         """Test total minted when no mints exist"""
-        self.mock_db_session.query.return_value.filter.return_value.scalar.return_value = (  # noqa: E501
-            None
-        )
+        self.mock_db_session.query.return_value.filter.return_value.scalar.return_value = None  # noqa: E501
 
         total = self.validator.get_total_minted("NEWTOKEN")
 

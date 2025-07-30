@@ -91,9 +91,7 @@ class TestMarketplaceTransfers(unittest.TestCase):
         tx_info = {"vin": [{}, {}]}
         result = self.processor.validate_marketplace_transfer(tx_info, 901349)
         self.assertFalse(result.is_valid)
-        self.assertEqual(
-            result.error_code, BRC20ErrorCodes.INVALID_MARKETPLACE_TRANSACTION
-        )
+        self.assertEqual(result.error_code, BRC20ErrorCodes.INVALID_MARKETPLACE_TRANSACTION)
 
     def test_new_marketplace_valid(self):
         tx_info = {
@@ -151,9 +149,7 @@ class TestMarketplaceTransfers(unittest.TestCase):
         ):
             result = self.processor.validate_marketplace_transfer(tx_info, 901350)
             self.assertFalse(result.is_valid)
-            self.assertEqual(
-                result.error_code, BRC20ErrorCodes.INVALID_MARKETPLACE_TRANSACTION
-            )
+            self.assertEqual(result.error_code, BRC20ErrorCodes.INVALID_MARKETPLACE_TRANSACTION)
 
 
 if __name__ == "__main__":

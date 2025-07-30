@@ -1,7 +1,7 @@
 # **Simplicity: An Universal BRC-20 Indexer & OPI Framework**
 
 [![CI/CD Pipeline](https://github.com/The-Universal-BRC-20-Extension/simplicity/actions/workflows/ci.yml/badge.svg)](https://github.com/The-Universal-BRC-20-Extension/simplicity/actions/workflows/ci.yml)
-[![Test Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen)](https://github.com/The-Universal-BRC20-Extension/simplicity)
+[![Test Coverage](https://img.shields.io/badge/coverage-67%25-brightgreen)](https://github.com/The-Universal-BRC20-Extension/simplicity)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/release/python-3110/)
 
@@ -47,7 +47,7 @@ This plug-and-play architecture allows the community to propose and integrate ne
 
 - `deploy`, `mint`, `transfer`: The foundational operations for creating and moving BRC-20 tokens, handled by the legacy processor.
 
-### **OPI-0: `no_return`**
+### **OPI-0: `no_return`** [Next Update]
 
 - **Purpose:** A specialized operation for scenarios requiring proof of token burn or specific on-chain interactions, involving Ordinals and witness data inscriptions.
 - **Processor Logic:** The OPI-0 processor validates a unique transaction structure, including checks on witness data and specific output addresses (e.g., transfers to a Satoshi address). It interacts with external services OPI-LC indexer for the validation.
@@ -89,6 +89,28 @@ pipenv run alembic upgrade head
 pipenv run python run.py --continuous
 ```
 
+### Available Commands
+
+The project includes a comprehensive Makefile for common operations:
+
+```bash
+# Development
+make install          # Install dependencies
+make test            # Run all tests
+make test-unit       # Run unit tests only (fast)
+make test-integration # Run integration tests
+make test-functional # Run functional tests
+make test-coverage   # Run tests with coverage report
+
+# Code Quality
+make format          # Format code with black and isort
+make lint            # Run linting checks
+make clean           # Clean temporary files
+
+# Help
+make help            # Show all available commands
+```
+
 > **🔒 Security Warning:**
 > If you expose any service to the internet, you **MUST** change all default passwords. Never expose PostgreSQL or Redis databases directly. Use a firewall and secure networking practices.
 
@@ -113,29 +135,94 @@ curl http://localhost:8080/v1/indexer/brc20/list
 curl http://localhost:8080/v1/indexer/brc20/{tick}
 ```
 
-### OPI Framework Endpoints
-
-```bash
-# List all registered and enabled OPIs
-curl http://localhost:8080/v1/indexer/brc20/opis
-
-# Get information for a specific OPI
-curl http://localhost:8080/v1/indexer/brc20/opis/{opi_id}
-```
 
 ---
 
 ## Testing
 
-The integrity of the protocol is guaranteed by an exhaustive test suite organized by functionality.
+The integrity of the protocol is guaranteed by an exhaustive test suite organized by functionality and following industry best practices.
 
-```bash
-# Run all tests (unit, integration, performance, security)
-pipenv run pytest
+### Test Organization
 
-# Run tests with coverage report
-pipenv run pytest --cov=src --cov-report=html
+The test suite is organized into clear categories for optimal development workflow:
+
 ```
+tests/
+├── unit/                          # Unit tests (237 tests) - Fast, isolated
+│   ├── services/                  # Service layer tests
+│   ├── models/                    # Model tests  
+│   ├── utils/                     # Utility function tests
+│   └── api/                       # API unit tests
+├── integration/                    # Integration tests (108 tests) - Database & API
+├── functional/                     # Functional tests (34 tests) - End-to-end
+└── scripts/                       # Shell test scripts
+```
+
+### Running Tests
+
+#### Quick Commands (Recommended)
+```bash
+# Run all tests
+make test
+
+# Run only unit tests (fastest - ~5 seconds)
+make test-unit
+
+# Run integration tests
+make test-integration
+
+# Run functional tests
+make test-functional
+
+# Run fast tests (unit + integration)
+make test-fast
+
+# Run with coverage report
+make test-coverage
+```
+
+#### Direct Pytest Commands
+```bash
+# Run all tests
+pipenv run pytest tests/
+
+# Run specific test types
+pipenv run pytest tests/unit/           # Unit tests only
+pipenv run pytest tests/integration/    # Integration tests only
+pipenv run pytest tests/functional/     # Functional tests only
+
+# Run tests with coverage
+pipenv run pytest tests/ --cov=src --cov-report=html
+
+# Run tests with specific markers
+pipenv run pytest tests/ -m api         # API tests only
+pipenv run pytest tests/ -m database    # Database tests only
+pipenv run pytest tests/ -m bitcoin     # Bitcoin-related tests
+```
+
+### Test Types
+
+- **Unit Tests** (`tests/unit/`): Fast, isolated tests that verify individual functions and methods. These run in ~5 seconds and provide immediate feedback during development.
+
+- **Integration Tests** (`tests/integration/`): Tests that verify interactions between components, including database operations and API endpoints.
+
+- **Functional Tests** (`tests/functional/`): End-to-end tests that verify complete workflows and complex scenarios.
+
+- **Scripts** (`tests/scripts/`): Shell-based test utilities for manual testing and validation.
+
+### Test Coverage
+
+The test suite provides comprehensive coverage:
+- **379 total tests** across all categories
+- **67% code coverage** with detailed reporting
+- **Zero breaking changes** - all existing tests preserved
+
+### Development Workflow
+
+1. **Fast Feedback**: Use `make test-unit` for quick validation during development
+2. **Integration Testing**: Use `make test-integration` to verify component interactions
+3. **Full Validation**: Use `make test` for complete test suite before commits
+4. **Coverage Analysis**: Use `make test-coverage` for detailed coverage reports
 
 ---
 

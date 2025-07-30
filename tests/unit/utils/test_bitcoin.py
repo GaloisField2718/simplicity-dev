@@ -1,5 +1,5 @@
 """
-Institutional-grade unit tests for src/utils/bitcoin.py
+Unit tests for src/utils/bitcoin.py
 - 100% coverage required
 - Pure unit tests (no DB/session)
 - Strict PEP8, flake8, and black compliance
@@ -32,45 +32,35 @@ def test_extract_address_from_script_p2pkh():
     script_hex = "76a91489abcdefabbaabbaabbaabbaabbaabbaabbaabba88ac"
     addr = bitcoin.extract_address_from_script(script_hex)
     assert addr.startswith("1")
-    assert bitcoin.extract_address_from_script(
-        script_hex, network="testnet"
-    ).startswith("m")
+    assert bitcoin.extract_address_from_script(script_hex, network="testnet").startswith("m")
 
 
 def test_extract_address_from_script_p2sh():
     script_hex = "a91489abcdefabbaabbaabbaabbaabbaabbaabbaabba87"
     addr = bitcoin.extract_address_from_script(script_hex)
     assert addr.startswith("3")
-    assert bitcoin.extract_address_from_script(
-        script_hex, network="testnet"
-    ).startswith("2")
+    assert bitcoin.extract_address_from_script(script_hex, network="testnet").startswith("2")
 
 
 def test_extract_address_from_script_p2wpkh():
     script_hex = "001489abcdefabbaabbaabbaabbaabbaabbaabbaabba"
     addr = bitcoin.extract_address_from_script(script_hex)
     assert addr.startswith("bc1")
-    assert bitcoin.extract_address_from_script(
-        script_hex, network="testnet"
-    ).startswith("tb1")
+    assert bitcoin.extract_address_from_script(script_hex, network="testnet").startswith("tb1")
 
 
 def test_extract_address_from_script_p2wsh():
     script_hex = "0020" + "89" * 32
     addr = bitcoin.extract_address_from_script(script_hex)
     assert addr.startswith("bc1")
-    assert bitcoin.extract_address_from_script(
-        script_hex, network="testnet"
-    ).startswith("tb1")
+    assert bitcoin.extract_address_from_script(script_hex, network="testnet").startswith("tb1")
 
 
 def test_extract_address_from_script_p2tr():
     script_hex = "5120" + "89" * 32
     addr = bitcoin.extract_address_from_script(script_hex)
     assert addr.startswith("bc1p")
-    assert bitcoin.extract_address_from_script(
-        script_hex, network="testnet"
-    ).startswith("tb1p")
+    assert bitcoin.extract_address_from_script(script_hex, network="testnet").startswith("tb1p")
 
 
 def test_extract_address_from_script_invalid():
@@ -84,12 +74,7 @@ def test_is_op_return_script_true():
 
 
 def test_is_op_return_script_false():
-    assert (
-        bitcoin.is_op_return_script(
-            "76a91489abcdefabbaabbaabbaabbaabbaabbaabbaabba88ac"
-        )
-        is False
-    )
+    assert bitcoin.is_op_return_script("76a91489abcdefabbaabbaabbaabbaabbaabbaabbaabba88ac") is False
     assert bitcoin.is_op_return_script("") is False
 
 

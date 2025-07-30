@@ -1,5 +1,4 @@
-from sqlalchemy import Boolean, Column, DateTime, Integer, String, UniqueConstraint
-
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, UniqueConstraint
 from .base import Base
 
 
@@ -27,5 +26,19 @@ class BRC20Operation(Base):
     parsed_json = Column(String, nullable=True)
 
     is_marketplace = Column(Boolean, default=False, nullable=False, index=True)
+
+    is_multi_transfer = Column(
+        Boolean,
+        default=False,
+        nullable=False,
+        index=True,
+        comment="Part of multi-transfer transaction",
+    )
+    multi_transfer_step = Column(
+        Integer,
+        nullable=True,
+        index=True,
+        comment="Step index in multi-transfer (0-based)",
+    )
 
     __table_args__ = (UniqueConstraint("txid", "vout_index"),)

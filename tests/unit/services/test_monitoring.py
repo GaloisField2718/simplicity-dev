@@ -1,5 +1,5 @@
 """
-Institutional-grade unit tests for src/services/monitoring.py
+Unit tests for src/services/monitoring.py
 - 100% coverage required
 - Use db_session fixture and mocks for models/logger
 - Strict PEP8, flake8, and black compliance
@@ -40,9 +40,7 @@ def test_record_block_processed_error(monitoring):
 
 
 def test_record_block_processed_exception(monitoring):
-    with patch.object(
-        monitoring, "get_performance_metrics", side_effect=Exception("fail")
-    ):
+    with patch.object(monitoring, "get_performance_metrics", side_effect=Exception("fail")):
         with patch.object(monitoring.logger, "error") as mock_error:
             monitoring.record_block_processed(100, 0.5, 10, 2, 0)
             mock_error.assert_called()
@@ -92,9 +90,10 @@ def test_record_query_time_exception(monitoring):
 
 # --- add_warning / add_error ---
 def test_add_warning_and_error(monitoring):
-    with patch.object(monitoring.logger, "warning") as mock_warning, patch.object(
-        monitoring.logger, "error"
-    ) as mock_error:
+    with (
+        patch.object(monitoring.logger, "warning") as mock_warning,
+        patch.object(monitoring.logger, "error") as mock_error,
+    ):
         monitoring.add_warning("warn", {"foo": "bar"})
         assert len(monitoring._warnings) == 1
         mock_warning.assert_called()

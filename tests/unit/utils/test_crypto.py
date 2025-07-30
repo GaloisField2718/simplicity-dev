@@ -1,5 +1,5 @@
 """
-Institutional-grade unit tests for src/utils/crypto.py
+Unit tests for src/utils/crypto.py
 - 100% coverage required
 - Pure unit tests (no DB/session)
 - Strict PEP8, flake8, and black compliance

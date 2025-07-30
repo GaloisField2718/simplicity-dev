@@ -21,27 +21,21 @@ class TestErrorHandler:
     def test_handle_rpc_error(self, error_handler):
         """Test handling of RPC errors"""
         with patch.object(error_handler.logger, "error") as mock_log:
-            result = error_handler.handle_rpc_error(
-                Exception("RPC timeout"), {"block": 850000}
-            )
+            result = error_handler.handle_rpc_error(Exception("RPC timeout"), {"block": 850000})
             mock_log.assert_called_once()
             assert result is True
 
     def test_handle_database_error(self, error_handler):
         """Test handling of database errors"""
         with patch.object(error_handler.logger, "error") as mock_log:
-            result = error_handler.handle_database_error(
-                Exception("Connection failed"), {"query": "SELECT *"}
-            )
+            result = error_handler.handle_database_error(Exception("Connection failed"), {"query": "SELECT *"})
             mock_log.assert_called_once()
             assert result is True
 
     def test_handle_validation_error(self, error_handler):
         """Test handling of validation errors"""
         with patch.object(error_handler.logger, "warning") as mock_log:
-            error_handler.handle_validation_error(
-                Exception("Invalid ticker"), {"op": "deploy"}
-            )
+            error_handler.handle_validation_error(Exception("Invalid ticker"), {"op": "deploy"})
             mock_log.assert_called_once()
 
     def test_should_retry(self, error_handler):

@@ -250,9 +250,7 @@ class TestDataTransformation:
             "data": [{"item": 1}, {"item": 2}, {"item": 3}],
         }
 
-        result = DataTransformationService.transform_paginated_response(
-            backend_response
-        )
+        result = DataTransformationService.transform_paginated_response(backend_response)
 
         assert isinstance(result, list)
         assert len(result) == 3
@@ -264,9 +262,7 @@ class TestDataTransformation:
         """Test paginated response transformation with direct list"""
         backend_response = [{"item": 1}, {"item": 2}]
 
-        result = DataTransformationService.transform_paginated_response(
-            backend_response
-        )
+        result = DataTransformationService.transform_paginated_response(backend_response)
 
         assert isinstance(result, list)
         assert len(result) == 2
@@ -326,9 +322,7 @@ class TestDataTransformation:
         max_supply = "21000000"
         current_supply = "7000"
 
-        result = DataTransformationService._calculate_remaining_supply(
-            max_supply, current_supply
-        )
+        result = DataTransformationService._calculate_remaining_supply(max_supply, current_supply)
 
         assert result == "20993000"
 
@@ -337,9 +331,7 @@ class TestDataTransformation:
         max_supply = "21000000"
         current_supply = "0"
 
-        result = DataTransformationService._calculate_remaining_supply(
-            max_supply, current_supply
-        )
+        result = DataTransformationService._calculate_remaining_supply(max_supply, current_supply)
 
         assert result == "21000000"
 
@@ -348,9 +340,7 @@ class TestDataTransformation:
         max_supply = "1000"
         current_supply = "1500"
 
-        result = DataTransformationService._calculate_remaining_supply(
-            max_supply, current_supply
-        )
+        result = DataTransformationService._calculate_remaining_supply(max_supply, current_supply)
 
         assert result == "0"
 
@@ -359,9 +349,7 @@ class TestDataTransformation:
         max_supply = "invalid"
         current_supply = "1000"
 
-        result = DataTransformationService._calculate_remaining_supply(
-            max_supply, current_supply
-        )
+        result = DataTransformationService._calculate_remaining_supply(max_supply, current_supply)
 
         assert result == "0"
 

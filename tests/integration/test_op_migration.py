@@ -73,9 +73,7 @@ class TestOpMigration:
         with patch("src.services.calculation_service.Session"):
             calc_service = BRC20CalculationService(Mock())
 
-            result = calc_service._map_operation_to_op_model(
-                mock_db_op, "test_block_hash"
-            )
+            result = calc_service._map_operation_to_op_model(mock_db_op, "test_block_hash")
 
             assert result["tx_id"] == "test_txid_456"
             assert result["op"] == "transfer"
@@ -140,9 +138,7 @@ class TestOpMigration:
 
             [(mock_db_op, "test_block_hash")]
 
-            result = calc_service._map_operation_to_op_model(
-                mock_db_op, "test_block_hash"
-            )
+            result = calc_service._map_operation_to_op_model(mock_db_op, "test_block_hash")
 
             op = Op(**result)
             assert op.tx_id == "test_txid_999"

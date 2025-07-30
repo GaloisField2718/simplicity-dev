@@ -35,6 +35,19 @@ class BRC20ErrorCodes:
     INVALID_MARKETPLACE_TRANSACTION = "INVALID_MARKETPLACE_TRANSACTION"
     INVALID_SIGHASH_TYPE = "INVALID_SIGHASH_TYPE"
 
+    # Multi-transfer specific errors
+    INVALID_MULTI_TRANSFER_STRUCTURE = "INVALID_MULTI_TRANSFER_STRUCTURE"
+    INVALID_OUTPUT_POSITION = "INVALID_OUTPUT_POSITION"
+    NO_RECEIVER_OUTPUT = "NO_RECEIVER_OUTPUT"
+    INVALID_RECEIVER_ADDRESS = "INVALID_RECEIVER_ADDRESS"
+    MULTI_TRANSFER_MIXED_TICKERS = "MULTI_TRANSFER_MIXED_TICKERS"
+    MULTI_TRANSFER_LIMIT_EXCEEDED = "MULTI_TRANSFER_LIMIT_EXCEEDED"
+    MULTI_TRANSFER_INSUFFICIENT_TOTAL_BALANCE = "MULTI_TRANSFER_INSUFFICIENT_TOTAL_BALANCE"
+
+    # System/Generic errors
+    INVALID_TIMESTAMP = "INVALID_TIMESTAMP"
+    UNKNOWN_PROCESSING_ERROR = "UNKNOWN_PROCESSING_ERROR"
+
 
 class TransferType(Enum):
     """Transfer type classification for optimization"""
@@ -42,14 +55,13 @@ class TransferType(Enum):
     SIMPLE = "simple"
     MARKETPLACE = "marketplace"
     INVALID_MARKETPLACE = "invalid_marketplace"
+    MULTI_TRANSFER = "multi_transfer"
 
 
 class ValidationResult:
     """Result of a validation operation"""
 
-    def __init__(
-        self, is_valid: bool, error_code: str = None, error_message: str = None
-    ):
+    def __init__(self, is_valid: bool, error_code: str = None, error_message: str = None):
         self.is_valid = is_valid
         self.error_code = error_code
         self.error_message = error_message
@@ -82,3 +94,5 @@ class IndexerError(Exception):
 
 class ValidationError(Exception):
     """Custom exception for validation errors"""
+
+    pass

@@ -41,9 +41,7 @@ class TestIntegration:
             "vout": [],
         }
 
-        with patch.object(
-            processor, "get_first_input_address", return_value="deployer_address"
-        ):
+        with patch.object(processor, "get_first_input_address", return_value="deployer_address"):
             processor.current_block_timestamp = 1677649200  # Set block timestamp
 
             with patch.object(
@@ -51,13 +49,11 @@ class TestIntegration:
                 "validate_complete_operation",
                 return_value=ValidationResult(True),
             ):
-                processor.process_deploy(deploy_operation, deploy_tx, "test_hex_data")
+                processor.process_deploy(deploy_operation, deploy_tx, intermediate_deploys={})
 
                 assert mock_db_session.add.call_count >= 1
 
-                added_objects = [
-                    call[0][0] for call in mock_db_session.add.call_args_list
-                ]
+                added_objects = [call[0][0] for call in mock_db_session.add.call_args_list]
 
                 deploy_obj = None
                 for obj in added_objects:
@@ -88,29 +84,48 @@ class TestIntegration:
         mock_balance.add_amount = Mock()
 
         with patch.object(
-            processor,
+            processor.validator,
             "get_first_standard_output_address",
             return_value="minter_address",
         ):
-            with patch.object(Balance, "get_or_create", return_value=mock_balance):
+
+            with patch.object(
+                processor.validator,
+                "validate_complete_operation",
+                return_value=ValidationResult(True),
+            ):
                 with patch.object(
-                    processor,
-                    "validate_mint_op_return_position",
-                    return_value=ValidationResult(True),
+                    processor.validator,
+                    "get_deploy_record",
+                    return_value=Mock(ticker="TEST", max_supply="1000000", limit_per_op="1000"),
                 ):
                     with patch.object(
                         processor.validator,
-                        "validate_complete_operation",
-                        return_value=ValidationResult(True),
+                        "get_total_minted",
+                        return_value="0",
                     ):
-                        processor.process_mint(
-                            mint_operation, mint_tx, "test_hex_data", 800000
-                        )
+                        with patch.object(processor, "update_balance") as mock_update:
+                            result = processor.process_mint(
+                                mint_operation,
+                                mint_tx,
+                                intermediate_balances={},
+                                intermediate_total_minted={},
+                                intermediate_deploys={},
+                            )
 
-                        Balance.get_or_create.assert_called_once_with(
-                            mock_db_session, "minter_address", "TEST"
-                        )
-                        mock_balance.add_amount.assert_called_once_with("500")
+                            # Check if the result is valid
+                            if not result.is_valid:
+                                print(f"Validation failed: {result.error_message}")
+                            assert result.is_valid is True
+
+                            mock_update.assert_called_once_with(
+                                address="minter_address",
+                                ticker="TEST",
+                                amount_delta="500",
+                                op_type="mint",
+                                txid="mint_txid",
+                                intermediate_balances={},
+                            )
 
         mock_db_session.reset_mock()
 
@@ -130,57 +145,54 @@ class TestIntegration:
         mock_recipient_balance = Mock()
         mock_recipient_balance.add_amount = Mock()
 
-        with patch.object(
-            processor, "get_first_input_address", return_value="minter_address"
-        ):
+        with patch.object(processor, "get_first_input_address", return_value="minter_address"):
             with patch.object(
-                processor,
+                processor.validator,
                 "get_first_standard_output_address",
                 return_value="recipient_address",
             ):
-                with patch.object(Balance, "get_or_create") as mock_get_or_create:
-                    mock_get_or_create.side_effect = [
-                        mock_sender_balance,
-                        mock_recipient_balance,
-                    ]
+                with patch.object(
+                    processor,
+                    "classify_transfer_type",
+                    return_value=TransferType.SIMPLE,
+                ):
 
                     with patch.object(
                         processor,
-                        "classify_transfer_type",
-                        return_value=TransferType.SIMPLE,
+                        "resolve_transfer_addresses",
+                        return_value={
+                            "sender": "minter_address",
+                            "recipient": "recipient_address",
+                        },
                     ):
                         with patch.object(
-                            processor,
-                            "validate_transfer_specific",
+                            processor.validator,
+                            "validate_complete_operation",
                             return_value=ValidationResult(True),
                         ):
-                            with patch.object(
-                                processor,
-                                "resolve_transfer_addresses",
-                                return_value={
-                                    "sender": "minter_address",
-                                    "recipient": "recipient_address",
-                                },
-                            ):
-                                with patch.object(
-                                    processor.validator,
-                                    "validate_complete_operation",
-                                    return_value=ValidationResult(True),
-                                ):
-                                    processor.process_transfer(
-                                        transfer_operation,
-                                        transfer_tx,
-                                        "test_hex_data",
-                                        800000,
-                                    )
+                            with patch.object(processor, "update_balance") as mock_update:
+                                processor.process_transfer(
+                                    transfer_operation,
+                                    transfer_tx,
+                                    ValidationResult(True),
+                                    "test_hex_data",
+                                    800000,
+                                    intermediate_balances={},
+                                )
 
-                                    assert mock_get_or_create.call_count == 2
-                                    mock_sender_balance.subtract_amount.assert_called_once_with(  # noqa: E501
-                                        "200"
-                                    )
-                                    mock_recipient_balance.add_amount.assert_called_once_with(  # noqa: E501
-                                        "200"
-                                    )
+                                assert mock_update.call_count == 2
+
+                                # Check the debit call
+                                debit_call = mock_update.call_args_list[0]
+                                assert debit_call[1]["address"] == "minter_address"
+                                assert debit_call[1]["amount_delta"] == "-200"
+                                assert debit_call[1]["op_type"] == "transfer_out"
+
+                                # Check the credit call
+                                credit_call = mock_update.call_args_list[1]
+                                assert credit_call[1]["address"] == "recipient_address"
+                                assert credit_call[1]["amount_delta"] == "200"
+                                assert credit_call[1]["op_type"] == "transfer_in"
 
     def test_multiple_mints_same_block(self, processor, mock_db_session):
         """Test multiple mints of same ticker in one block"""
@@ -207,34 +219,51 @@ class TestIntegration:
         mock_balance2 = Mock()
         mock_balance2.add_amount = Mock()
 
-        with patch.object(
-            processor, "get_first_standard_output_address"
-        ) as mock_get_address:
+        with patch.object(processor.validator, "get_first_standard_output_address") as mock_get_address:
             mock_get_address.side_effect = ["address1", "address2"]
 
-            with patch.object(Balance, "get_or_create") as mock_get_or_create:
-                mock_get_or_create.side_effect = [mock_balance1, mock_balance2]
-
+            with patch.object(
+                processor.validator,
+                "validate_complete_operation",
+                return_value=ValidationResult(True),
+            ):
                 with patch.object(
-                    processor,
-                    "validate_mint_op_return_position",
-                    return_value=ValidationResult(True),
+                    processor.validator,
+                    "get_deploy_record",
+                    return_value=Mock(ticker="TEST", max_supply="1000000", limit_per_op="1000"),
                 ):
                     with patch.object(
                         processor.validator,
-                        "validate_complete_operation",
-                        return_value=ValidationResult(True),
+                        "get_total_minted",
+                        return_value="0",
                     ):
-                        processor.process_mint(
-                            mint_operation, mint_tx1, "test_hex_data", 800000
-                        )
-                        processor.process_mint(
-                            mint_operation, mint_tx2, "test_hex_data", 800000
-                        )
+                        with patch.object(processor, "update_balance") as mock_update:
+                            processor.process_mint(
+                                mint_operation,
+                                mint_tx1,
+                                intermediate_balances={},
+                                intermediate_total_minted={},
+                                intermediate_deploys={},
+                            )
+                            processor.process_mint(
+                                mint_operation,
+                                mint_tx2,
+                                intermediate_balances={},
+                                intermediate_total_minted={},
+                                intermediate_deploys={},
+                            )
 
-                        assert mock_get_or_create.call_count == 2
-                        mock_balance1.add_amount.assert_called_once_with("100")
-                        mock_balance2.add_amount.assert_called_once_with("100")
+                            assert mock_update.call_count == 2
+                            # Check first mint
+                            first_call = mock_update.call_args_list[0]
+                            assert first_call[1]["address"] == "address1"
+                            assert first_call[1]["amount_delta"] == "100"
+                            assert first_call[1]["op_type"] == "mint"
+                            # Check second mint
+                            second_call = mock_update.call_args_list[1]
+                            assert second_call[1]["address"] == "address2"
+                            assert second_call[1]["amount_delta"] == "100"
+                            assert second_call[1]["op_type"] == "mint"
 
     def test_transfer_entire_balance(self, processor, mock_db_session):
         """Test transfer of complete balance"""
@@ -254,11 +283,9 @@ class TestIntegration:
         mock_recipient_balance = Mock()
         mock_recipient_balance.add_amount = Mock()
 
-        with patch.object(
-            processor, "get_first_input_address", return_value="sender_address"
-        ):
+        with patch.object(processor, "get_first_input_address", return_value="sender_address"):
             with patch.object(
-                processor,
+                processor.validator,
                 "get_first_standard_output_address",
                 return_value="recipient_address",
             ):
@@ -273,37 +300,43 @@ class TestIntegration:
                         "classify_transfer_type",
                         return_value=TransferType.SIMPLE,
                     ):
+
                         with patch.object(
                             processor,
-                            "validate_transfer_specific",
-                            return_value=ValidationResult(True),
+                            "resolve_transfer_addresses",
+                            return_value={
+                                "sender": "sender_address",
+                                "recipient": "recipient_address",
+                            },
                         ):
                             with patch.object(
-                                processor,
-                                "resolve_transfer_addresses",
-                                return_value={
-                                    "sender": "sender_address",
-                                    "recipient": "recipient_address",
-                                },
+                                processor.validator,
+                                "validate_complete_operation",
+                                return_value=ValidationResult(True),
                             ):
-                                with patch.object(
-                                    processor.validator,
-                                    "validate_complete_operation",
-                                    return_value=ValidationResult(True),
-                                ):
+                                with patch.object(processor, "update_balance") as mock_update:
                                     processor.process_transfer(
                                         transfer_operation,
                                         transfer_tx,
+                                        ValidationResult(True),
                                         "test_hex_data",
                                         800000,
+                                        intermediate_balances={},
                                     )
 
-                                    mock_sender_balance.subtract_amount.assert_called_once_with(  # noqa: E501
-                                        "1000"
-                                    )
-                                    mock_recipient_balance.add_amount.assert_called_once_with(  # noqa: E501
-                                        "1000"
-                                    )
+                                    assert mock_update.call_count == 2
+
+                                    # Check the debit call
+                                    debit_call = mock_update.call_args_list[0]
+                                    assert debit_call[1]["address"] == "sender_address"
+                                    assert debit_call[1]["amount_delta"] == "-1000"
+                                    assert debit_call[1]["op_type"] == "transfer_out"
+
+                                    # Check the credit call
+                                    credit_call = mock_update.call_args_list[1]
+                                    assert credit_call[1]["address"] == "recipient_address"
+                                    assert credit_call[1]["amount_delta"] == "1000"
+                                    assert credit_call[1]["op_type"] == "transfer_in"
 
     def test_transfer_amount_exceeding_mint_limit(self, processor, mock_db_session):
         """
@@ -326,11 +359,9 @@ class TestIntegration:
         mock_recipient_balance = Mock()
         mock_recipient_balance.add_amount = Mock()
 
-        with patch.object(
-            processor, "get_first_input_address", return_value="sender_address"
-        ):
+        with patch.object(processor, "get_first_input_address", return_value="sender_address"):
             with patch.object(
-                processor,
+                processor.validator,
                 "get_first_standard_output_address",
                 return_value="recipient_address",
             ):
@@ -345,44 +376,48 @@ class TestIntegration:
                         "classify_transfer_type",
                         return_value=TransferType.SIMPLE,
                     ):
+
                         with patch.object(
                             processor,
-                            "validate_transfer_specific",
-                            return_value=ValidationResult(True),
+                            "resolve_transfer_addresses",
+                            return_value={
+                                "sender": "sender_address",
+                                "recipient": "recipient_address",
+                            },
                         ):
                             with patch.object(
-                                processor,
-                                "resolve_transfer_addresses",
-                                return_value={
-                                    "sender": "sender_address",
-                                    "recipient": "recipient_address",
-                                },
+                                processor.validator,
+                                "validate_complete_operation",
+                                return_value=ValidationResult(True),
                             ):
-                                with patch.object(
-                                    processor.validator,
-                                    "validate_complete_operation",
-                                    return_value=ValidationResult(True),
-                                ):
+                                with patch.object(processor, "update_balance") as mock_update:
                                     processor.process_transfer(
                                         transfer_operation,
                                         transfer_tx,
+                                        ValidationResult(True),
                                         "test_hex_data",
                                         800000,
+                                        intermediate_balances={},
                                     )
 
-                                    mock_sender_balance.subtract_amount.assert_called_once_with(  # noqa: E501
-                                        "3000"
-                                    )
-                                    mock_recipient_balance.add_amount.assert_called_once_with(  # noqa: E501
-                                        "3000"
-                                    )
+                                    assert mock_update.call_count == 2
+
+                                    # Check the debit call
+                                    debit_call = mock_update.call_args_list[0]
+                                    assert debit_call[1]["address"] == "sender_address"
+                                    assert debit_call[1]["amount_delta"] == "-3000"
+                                    assert debit_call[1]["op_type"] == "transfer_out"
+
+                                    # Check the credit call
+                                    credit_call = mock_update.call_args_list[1]
+                                    assert credit_call[1]["address"] == "recipient_address"
+                                    assert credit_call[1]["amount_delta"] == "3000"
+                                    assert credit_call[1]["op_type"] == "transfer_in"
 
     def test_invalid_operations_logged(self, processor, mock_db_session):
         """Test invalid operations are properly logged"""
         operation_data = {"op": "mint", "tick": "INVALID", "amt": "100"}
-        validation_result = ValidationResult(
-            False, "TICKER_NOT_DEPLOYED", "Ticker not deployed"
-        )
+        validation_result = ValidationResult(False, "TICKER_NOT_DEPLOYED", "Ticker not deployed")
         tx_info = {
             "txid": "invalid_txid",
             "block_height": 800000,
@@ -398,8 +433,11 @@ class TestIntegration:
 
         with patch.object(processor, "get_first_input_address", return_value="sender"):
             with patch.object(
-                processor, "get_first_standard_output_address", return_value="recipient"
+                processor.validator,
+                "get_first_standard_output_address",
+                return_value="recipient",
             ):
+                processor.current_block_timestamp = 1677649200  # Set block timestamp
                 processor.log_operation(
                     operation_data,
                     validation_result,
@@ -451,9 +489,7 @@ class TestIntegration:
                         "validate_complete_operation",
                         return_value=ValidationResult(True, None, None),
                     ):
-                        with patch.object(
-                            processor, "process_transfer"
-                        ) as mock_process:
+                        with patch.object(processor, "process_transfer") as mock_process:
                             mock_process.return_value = ValidationResult(True)
 
                             result = processor.process_transaction(
