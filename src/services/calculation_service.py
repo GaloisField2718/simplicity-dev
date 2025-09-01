@@ -580,7 +580,6 @@ class BRC20CalculationService:
         }
 
     def get_history_by_height(self, height: int, start: int = 0, size: int = 100000) -> Dict:
-        """Get all operations at specific block height with proper formatting"""
         try:
             query = (
                 self.db.query(BRC20Operation, ProcessedBlock.block_hash)
@@ -612,7 +611,6 @@ class BRC20CalculationService:
             raise
 
     def get_all_tickers_with_stats_unlimited(self, max_results: Optional[int] = None) -> Dict:
-        """Get ALL tickers with calculated statistics - OPTIMIZED for unlimited results"""
         try:
             query = self.db.query(Deploy).order_by(Deploy.deploy_height.desc())
             total = query.count()

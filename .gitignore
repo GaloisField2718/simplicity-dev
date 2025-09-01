@@ -64,5 +64,5 @@ backups/
 dev/
 
 # Alembic
-alembic/versions/*.py
-!alembic/versions/eb4d511e7c2a_initial_database_schema.py
+# Ne pas ignorer les fichiers de migration
+!alembic/versions/

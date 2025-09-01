@@ -310,8 +310,6 @@ class TestBRC20Validator:
         mock_deploy = Mock()
         mock_deploy.max_supply = "21000000"
         mock_deploy.limit_per_op = "1000"
-
-u
         self.mock_db_session.query.return_value.filter.return_value.scalar.return_value = 21000000  # noqa: E501
 
         operation = {"tick": "OPQT", "amt": "1"}
@@ -326,7 +324,7 @@ u
 
         total = self.validator.get_total_minted("OPQT")
 
-        assert total == "5000000"
+        assert total == Decimal("5000000")
         self.mock_db_session.query.assert_called()
 
     def test_get_total_minted_no_mints(self):
@@ -334,4 +332,4 @@ u
 
         total = self.validator.get_total_minted("NEWTOKEN")
 
-        assert total == "0"
+        assert total == Decimal("0")

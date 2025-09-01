@@ -71,6 +71,10 @@ class Settings(BaseSettings):
     LOG_MARKETPLACE_METRICS: bool = True
     VALIDATE_PROCESSING_CONSISTENCY: bool = True
 
+    # Marketplace prioritization settings (MANDATORY)
+    ENABLE_MARKETPLACE_PRIORITIZATION: bool = True
+    ENABLE_DEFERRED_COMMIT: bool = True
+
     class Config:
         env_file = ".env"
         extra = "ignore"

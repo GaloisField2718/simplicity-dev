@@ -1,5 +1,5 @@
 """
-BRC-20 consensus rule validation service.
+BRC-20 consensus rule validation service
 """
 
 from typing import Dict, Any, Optional, List
@@ -110,7 +110,6 @@ class BRC20Validator:
         deploy: Optional[Deploy] = None,
         intermediate_balances=None,
     ) -> ValidationResult:
-        """Validate transfer operation"""
         ticker = operation.get("tick")
         amount = operation.get("amt")
 
@@ -140,7 +139,6 @@ class BRC20Validator:
     def validate_output_addresses(
         self, tx_outputs: List[Dict[str, Any]], operation_type: str = None
     ) -> ValidationResult:
-        """Validate transaction outputs based on operation type"""
         if not isinstance(tx_outputs, list) or not tx_outputs:
             return ValidationResult(
                 False,
@@ -220,13 +218,13 @@ class BRC20Validator:
 
         return str(total or 0)
 
-    def get_total_minted(self, ticker: str, intermediate_total_minted: Optional[Dict] = None) -> str:
+    def get_total_minted(self, ticker: str, intermediate_total_minted: Optional[Dict] = None) -> Decimal:
         from src.models.transaction import BRC20Operation
 
         normalized_ticker = ticker.upper()
 
         if intermediate_total_minted is not None and normalized_ticker in intermediate_total_minted:
-            return intermediate_total_minted[normalized_ticker]
+            return Decimal(intermediate_total_minted[normalized_ticker])
 
         db_total = (
             self.db.query(func.coalesce(func.sum(BRC20Operation.amount), 0))
@@ -238,7 +236,7 @@ class BRC20Validator:
             .scalar()
         )
 
-        return str(db_total or 0)
+        return Decimal(db_total or 0)
 
     def validate_mint_overflow(
         self,
@@ -247,7 +245,6 @@ class BRC20Validator:
         deploy: Deploy,
         intermediate_total_minted=None,
     ) -> ValidationResult:
-        """Validate that mint doesn't exceed max supply"""
         current_total_minted = self.get_total_minted(ticker, intermediate_total_minted=intermediate_total_minted)
 
         try:
@@ -308,7 +305,6 @@ class BRC20Validator:
         intermediate_total_minted: Optional[Dict] = None,
         intermediate_deploys: Optional[Dict] = None,
     ) -> ValidationResult:
-        """Validate complete BRC-20 operation with all consensus rules"""
         op_type = operation.get("op")
         ticker = operation.get("tick")
 
@@ -330,10 +326,10 @@ class BRC20Validator:
         if op_type == "deploy":
             return self.validate_deploy(operation, intermediate_deploys=intermediate_deploys)
 
-        elif op_type == "mint":  # pylint: disable=no-else-return
+        elif op_type == "mint":
             return self.validate_mint(operation, deploy, intermediate_total_minted=intermediate_total_minted)
 
-        elif op_type == "transfer":  # pylint: disable=no-else-return
+        elif op_type == "transfer":
             if sender_address is None:
                 return ValidationResult(
                     False,
@@ -349,7 +345,7 @@ class BRC20Validator:
                 intermediate_balances=intermediate_balances,
             )
 
-        else:  # pylint: disable=no-else-return
+        else:
             return ValidationResult(
                 False,
                 BRC20ErrorCodes.INVALID_OPERATION,
