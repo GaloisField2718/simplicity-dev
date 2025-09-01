@@ -8,9 +8,8 @@ from src.models.transaction import BRC20Operation
 
 
 def test_get_tickers(client: TestClient, db_session):
-    """Test get all tickers endpoint"""
     deploy = Deploy(
-        ticker="ORDI",
+        ticker="OPQT",
         max_supply="21000000",
         limit_per_op="1000",
         deploy_txid="test_txid_1",
@@ -29,16 +28,14 @@ def test_get_tickers(client: TestClient, db_session):
 
 
 def test_get_ticker_not_found(client: TestClient):
-    """Test get ticker that doesn't exist"""
     response = client.get("/v1/indexer/brc20/MISSING/info")
     assert response.status_code == 404
 
 
 def test_get_ticker_success(client: TestClient, db_session):
-    """Test get specific ticker"""
     deploy = Deploy(
-        ticker="SATS",
-        max_supply="100000000",
+        ticker="KEK",
+        max_supply="209999999769",
         limit_per_op="10000",
         deploy_txid="test_txid_2",
         deploy_height=800001,
@@ -48,16 +45,15 @@ def test_get_ticker_success(client: TestClient, db_session):
     db_session.add(deploy)
     db_session.commit()
 
-    response = client.get("/v1/indexer/brc20/SATS/info")
+    response = client.get("/v1/indexer/brc20/KEK/info")
     assert response.status_code == 200
     data = response.json()
-    assert data["ticker"] == "SATS"
-    assert data["max_supply"] == "100000000"
-    assert data["limit_per_mint"] == "10000"
+    assert data["ticker"] == "KEK"
+    assert data["max_supply"] == "209999999769.00000000"
+    assert data["limit_per_mint"] == "10000.00000000"
 
 
 def test_get_ticker_holders(client: TestClient, db_session):
-    """Test get ticker holders"""
     deploy = Deploy(
         ticker="TEST",
         max_supply="1000000",
@@ -81,7 +77,6 @@ def test_get_ticker_holders(client: TestClient, db_session):
 
 
 def test_get_ticker_transactions(client: TestClient, db_session):
-    """Test get ticker transactions"""
     deploy = Deploy(
         ticker="TXN",
         max_supply="5000000",
@@ -120,7 +115,6 @@ def test_get_ticker_transactions(client: TestClient, db_session):
 
 
 def test_get_address_balances(client: TestClient, db_session):
-    """Test get address balances"""
     balance = Balance(address="bc1qaddress1", ticker="ADDR", balance="2000")
     db_session.add(balance)
     db_session.commit()
@@ -134,7 +128,6 @@ def test_get_address_balances(client: TestClient, db_session):
 
 
 def test_get_address_transactions(client: TestClient, db_session):
-    """Test get address transactions"""
     transaction = BRC20Operation(
         txid="test_address_tx_1",
         vout_index=0,
@@ -162,7 +155,6 @@ def test_get_address_transactions(client: TestClient, db_session):
 
 
 def test_health_check(client: TestClient):
-    """Test status endpoint (equivalent to health check)"""
     response = client.get("/v1/indexer/brc20/status")
     assert response.status_code == 200
     data = response.json()
@@ -172,7 +164,6 @@ def test_health_check(client: TestClient):
 
 
 def test_pagination_validation(client: TestClient):
-    """Test pagination parameter validation"""
     response = client.get("/v1/indexer/brc20/list?skip=-1")
     assert response.status_code == 200
 
@@ -181,12 +172,10 @@ def test_pagination_validation(client: TestClient):
 
 
 def test_long_ticker_valid_but_not_found(client: TestClient):
-    """Test long ticker is valid format but returns 404 if not deployed"""
     response = client.get("/v1/indexer/brc20/VERYLONGTICKER/info")
     assert response.status_code == 404
 
 
 def test_invalid_bitcoin_address(client: TestClient):
-    """Test invalid bitcoin address format"""
     response = client.get("/v1/indexer/address/invalid_address/history")
     assert response.status_code == 400

@@ -14,11 +14,12 @@ logger = structlog.get_logger()
 
 
 class BRC20CalculationService:
+    """Calculate statistics for BRC-20 tickers"""
+
     def __init__(self, db_session: Session):
         self.db = db_session
 
     def get_all_tickers_with_stats(self, start: int = 0, size: int = 50) -> Dict:
-        """Get all tickers with calculated statistics"""
         try:
             query = self.db.query(Deploy).order_by(Deploy.deploy_height.desc())
             total = query.count()
@@ -36,7 +37,6 @@ class BRC20CalculationService:
             raise
 
     def get_ticker_stats(self, ticker: str) -> Optional[Dict]:
-        """Get complete statistics for a single ticker"""
         try:
             normalized_ticker = ticker.upper()
 
@@ -52,17 +52,14 @@ class BRC20CalculationService:
             raise
 
     def _calculate_ticker_stats(self, deploy: Deploy) -> Dict:
-        """Calculate statistics for a deploy (internal helper)"""
-        from sqlalchemy import Numeric
-
         current_supply = (
-            self.db.query(func.coalesce(func.sum(Balance.balance.cast(Numeric)), 0))
-            .filter(Balance.ticker == deploy.ticker, Balance.balance != "0")
+            self.db.query(func.coalesce(func.sum(Balance.balance), 0))
+            .filter(Balance.ticker == deploy.ticker, Balance.balance != 0)
             .scalar()
-            or "0"
+            or 0
         )
 
-        holder_count = self.db.query(Balance).filter(Balance.ticker == deploy.ticker, Balance.balance != "0").count()
+        holder_count = self.db.query(Balance).filter(Balance.ticker == deploy.ticker, Balance.balance != 0).count()
 
         is_completed = compare_amounts(str(current_supply), deploy.max_supply) >= 0
 
@@ -81,16 +78,13 @@ class BRC20CalculationService:
         }
 
     def get_ticker_holders(self, ticker: str, start: int = 0, size: int = 50) -> Dict:
-        """Get holders for ticker with latest transfer info"""
         try:
             normalized_ticker = ticker.upper()
 
-            from sqlalchemy import Numeric
-
             query = (
                 self.db.query(Balance)
-                .filter(Balance.ticker == normalized_ticker, Balance.balance != "0")
-                .order_by(Balance.balance.cast(Numeric).desc())
+                .filter(Balance.ticker == normalized_ticker, Balance.balance != 0)
+                .order_by(Balance.balance.desc())
             )
 
             total = query.count()
@@ -152,7 +146,6 @@ class BRC20CalculationService:
             raise
 
     def get_ticker_transactions(self, ticker: str, start: int = 0, size: int = 100000) -> Dict:
-        """Get transactions for ticker with proper formatting"""
         try:
             normalized_ticker = ticker.upper()
 
@@ -186,14 +179,11 @@ class BRC20CalculationService:
             raise
 
     def get_address_balances(self, address: str, start: int = 0, size: int = 50) -> Dict:
-        """Get balances for address with latest transfer info"""
         try:
-            from sqlalchemy import Numeric
-
             query = (
                 self.db.query(Balance)
-                .filter(Balance.address == address, Balance.balance != "0")
-                .order_by(Balance.balance.cast(Numeric).desc())
+                .filter(Balance.address == address, Balance.balance != 0)
+                .order_by(Balance.balance.desc())
             )
 
             total = query.count()
@@ -255,7 +245,6 @@ class BRC20CalculationService:
             raise
 
     def get_address_transactions(self, address: str, start: int = 0, size: int = 100000) -> Dict:
-        """Get transactions for address with proper formatting"""
         try:
             query = (
                 self.db.query(BRC20Operation, ProcessedBlock.block_hash)
@@ -290,7 +279,6 @@ class BRC20CalculationService:
             raise
 
     def get_indexer_status(self) -> Dict:
-        """Get blockchain sync status"""
         try:
             latest_block = self.db.query(ProcessedBlock).order_by(ProcessedBlock.height.desc()).first()
             latest_brc20_op = self.db.query(BRC20Operation).order_by(BRC20Operation.block_height.desc()).first()
@@ -305,7 +293,6 @@ class BRC20CalculationService:
             raise
 
     def get_operations_by_height(self, height: int, skip: int = 0, limit: int = 100000) -> List[Dict]:
-        """Get all operations at specific block height"""
         try:
             query = (
                 self.db.query(BRC20Operation, ProcessedBlock.block_hash)
@@ -331,7 +318,6 @@ class BRC20CalculationService:
             raise
 
     def get_transaction_operations(self, ticker: str, txid: str) -> List[Dict]:
-        """Get all operations in specific transaction for ticker"""
         try:
             results = (
                 self.db.query(BRC20Operation, ProcessedBlock.block_hash)
@@ -352,7 +338,7 @@ class BRC20CalculationService:
                         "id": op.id,
                         "op": op.operation,
                         "ticker": op.ticker,
-                        "amount_str": op.amount or "",
+                        "amount": op.amount or "",
                         "from_address": op.from_address or "",
                         "to_address": op.to_address or "",
                         "block_height": op.block_height,
@@ -412,7 +398,7 @@ class BRC20CalculationService:
                         "id": op.id,
                         "op": op.operation,
                         "ticker": op.ticker,
-                        "amount_str": op.amount or "",
+                        "amount": op.amount or "",
                         "from_address": op.from_address or "",
                         "to_address": op.to_address or "",
                         "block_height": op.block_height,
@@ -583,7 +569,7 @@ class BRC20CalculationService:
             "txid": db_op.txid,
             "op": db_op.operation,
             "ticker": db_op.ticker,
-            "amount_str": db_op.amount if db_op.amount else None,
+            "amount": db_op.amount if db_op.amount else None,
             "block_height": db_op.block_height,
             "block_hash": block_hash,
             "tx_index": db_op.tx_index,
@@ -653,16 +639,13 @@ class BRC20CalculationService:
             raise
 
     def get_all_ticker_holders_unlimited(self, ticker: str, max_results: Optional[int] = None) -> Dict:
-        """Get ALL holders for ticker - OPTIMIZED for unlimited results"""
         try:
             normalized_ticker = ticker.upper()
 
-            from sqlalchemy import Numeric
-
             query = (
                 self.db.query(Balance)
-                .filter(Balance.ticker == normalized_ticker, Balance.balance != "0")
-                .order_by(Balance.balance.cast(Numeric).desc())
+                .filter(Balance.ticker == normalized_ticker, Balance.balance != 0)
+                .order_by(Balance.balance.desc())
             )
 
             total = query.count()
@@ -739,7 +722,6 @@ class BRC20CalculationService:
         max_results: Optional[int] = None,
         include_invalid: bool = False,
     ) -> Dict:
-        """Get ALL transactions for ticker - OPTIMIZED for unlimited results"""
         try:
             normalized_ticker = ticker.upper()
 
@@ -783,7 +765,6 @@ class BRC20CalculationService:
         max_results: Optional[int] = None,
         include_invalid: bool = False,
     ) -> Dict:
-        """Get ALL transactions for address - OPTIMIZED for unlimited results"""
         try:
             query = (
                 self.db.query(BRC20Operation, ProcessedBlock.block_hash)
@@ -830,7 +811,6 @@ class BRC20CalculationService:
         max_results: Optional[int] = None,
         include_invalid: bool = False,
     ) -> Dict:
-        """Get ALL operations at specific block height - OPTIMIZED for unlimited results"""
         try:
             query = (
                 self.db.query(BRC20Operation, ProcessedBlock.block_hash)

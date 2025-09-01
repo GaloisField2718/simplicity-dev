@@ -1,10 +1,11 @@
 """
-Tests for BRC-20 validator functionality.
+Tests for BRC-20 validator functionality
 """
 
 import os
 import sys
 from unittest.mock import Mock
+from decimal import Decimal
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 from src.services.validator import BRC20Validator  # noqa: E402
@@ -12,15 +13,12 @@ from src.utils.exceptions import BRC20ErrorCodes  # noqa: E402
 
 
 class TestBRC20Validator:
-    """Test BRC-20 validation functionality"""
 
     def setup_method(self):
-        """Setup test fixtures"""
         self.mock_db_session = Mock()
         self.validator = BRC20Validator(self.mock_db_session)
 
     def test_validate_deploy_new_ticker(self):
-        """Test valid deploy validation for new ticker"""
         mock_query = self.mock_db_session.query.return_value
         mock_query.filter.return_value.first.return_value = None
 
@@ -33,7 +31,6 @@ class TestBRC20Validator:
         assert result.error_message is None
 
     def test_validate_deploy_existing_ticker(self):
-        """Test deploy validation for existing ticker (should fail)"""
         existing_deploy = Mock()
         mock_query = self.mock_db_session.query.return_value
         mock_query.filter.return_value.first.return_value = existing_deploy
@@ -47,7 +44,6 @@ class TestBRC20Validator:
         assert "already deployed" in result.error_message
 
     def test_validate_deploy_invalid_max_supply(self):
-        """Test deploy with invalid max supply"""
         mock_query = self.mock_db_session.query.return_value
         mock_query.filter.return_value.first.return_value = None
 
@@ -60,7 +56,6 @@ class TestBRC20Validator:
         assert "Invalid max supply" in result.error_message
 
     def test_validate_mint_valid(self):
-        """Test valid mint validation"""
         mock_deploy = Mock()
         mock_deploy.limit_per_op = "1000"
         mock_deploy.max_supply = "21000000"
@@ -79,7 +74,6 @@ class TestBRC20Validator:
         assert result.error_message is None
 
     def test_validate_mint_no_deploy(self):
-        """Test mint validation when ticker not deployed"""
         operation = {"tick": "OPQT", "amt": "500"}
 
         current_supply = "0"
@@ -91,7 +85,6 @@ class TestBRC20Validator:
         assert "not deployed" in result.error_message
 
     def test_validate_mint_exceeds_limit(self):
-        """Test mint validation when amount exceeds limit - CRITICAL RULE"""
         mock_deploy = Mock()
         mock_deploy.limit_per_op = "1000"
         mock_deploy.max_supply = "21000000"
@@ -109,7 +102,6 @@ class TestBRC20Validator:
         assert "exceeds limit" in result.error_message
 
     def test_validate_mint_exceeds_max_supply(self):
-        """Test mint validation when would exceed max supply"""
         mock_deploy = Mock()
         mock_deploy.limit_per_op = "1000"
         mock_deploy.max_supply = "21000000"
@@ -127,7 +119,6 @@ class TestBRC20Validator:
         assert "exceed max supply" in result.error_message
 
     def test_validate_transfer_valid(self):
-        """Test valid transfer validation"""
         mock_deploy = Mock()
 
         operation = {"tick": "OPQT", "amt": "250"}
@@ -141,7 +132,6 @@ class TestBRC20Validator:
         assert result.error_message is None
 
     def test_validate_transfer_insufficient_balance(self):
-        """Test transfer validation with insufficient balance"""
         mock_deploy = Mock()
 
         operation = {"tick": "OPQT", "amt": "1500"}
@@ -155,7 +145,6 @@ class TestBRC20Validator:
         assert "Insufficient balance" in result.error_message
 
     def test_validate_transfer_no_deploy(self):
-        """Test transfer validation when ticker not deployed"""
         operation = {"tick": "OPQT", "amt": "250"}
 
         sender_balance = "1000"
@@ -167,7 +156,6 @@ class TestBRC20Validator:
         assert "not deployed" in result.error_message
 
     def test_validate_transfer_can_exceed_mint_limit(self):
-        """Test transfer can exceed mint limit - CRITICAL RULE"""
         mock_deploy = Mock()
         mock_deploy.limit_per_op = "100"
 
@@ -182,7 +170,6 @@ class TestBRC20Validator:
         assert result.error_message is None
 
     def test_validate_output_addresses_valid(self):
-        """Test output address validation with valid outputs"""
         tx_outputs = [
             {
                 "scriptPubKey": {
@@ -201,7 +188,6 @@ class TestBRC20Validator:
         assert result.error_message is None
 
     def test_validate_output_addresses_no_standard_outputs(self):
-        """Test output address validation with no standard outputs"""
         tx_outputs = [{"scriptPubKey": {"type": "nulldata", "hex": "6a..."}}]
 
         result = self.validator.validate_output_addresses(tx_outputs)
@@ -211,7 +197,6 @@ class TestBRC20Validator:
         assert "No standard outputs" in result.error_message
 
     def test_get_first_standard_output_address(self):
-        """Test getting first standard output address"""
         tx_outputs = [
             {"scriptPubKey": {"type": "nulldata", "hex": "6a..."}},
             {
@@ -235,7 +220,6 @@ class TestBRC20Validator:
         assert address == "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa"
 
     def test_get_current_supply(self):
-        """Test getting current supply"""
         self.mock_db_session.query.return_value.filter.return_value.scalar.return_value = 1000000  # noqa: E501
         self.mock_db_session.func = Mock()
         self.mock_db_session.BigInteger = Mock()
@@ -245,25 +229,22 @@ class TestBRC20Validator:
         assert supply == "1000000"
 
     def test_get_balance(self):
-        """Test getting balance for address and ticker"""
         mock_balance = Mock()
-        mock_balance.balance = "500"
+        mock_balance.balance = Decimal("500")
         self.mock_db_session.query.return_value.filter.return_value.first.return_value = mock_balance  # noqa: E501
 
         balance = self.validator.get_balance("1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa", "OPQT")
 
-        assert balance == "500"
+        assert balance == Decimal("500")
 
     def test_get_balance_not_found(self):
-        """Test getting balance when record not found"""
         self.mock_db_session.query.return_value.filter.return_value.first.return_value = None  # noqa: E501
 
         balance = self.validator.get_balance("1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa", "OPQT")
 
-        assert balance == "0"
+        assert balance == Decimal("0")
 
     def test_get_deploy_record(self):
-        """Test getting deploy record"""
         mock_deploy = Mock()
         self.mock_db_session.query.return_value.filter.return_value.first.return_value = mock_deploy  # noqa: E501
 
@@ -272,7 +253,6 @@ class TestBRC20Validator:
         assert deploy == mock_deploy
 
     def test_validate_complete_operation_deploy(self):
-        """Test complete operation validation for deploy"""
         self.mock_db_session.query.return_value.filter.return_value.first.return_value = None  # noqa: E501
 
         operation = {"op": "deploy", "tick": "OPQT", "m": "21000000", "l": "1000"}
@@ -294,7 +274,6 @@ class TestBRC20Validator:
         assert result.error_message is None
 
     def test_validate_mint_overflow_exact_case(self):
-        """Test the exact failing OPQT transaction scenario"""
 
         mock_deploy = Mock()
         mock_deploy.max_supply = "21000000"
@@ -312,7 +291,6 @@ class TestBRC20Validator:
         assert "Mint would exceed max supply" in result.error_message
 
     def test_validate_mint_overflow_just_under_limit(self):
-        """Test mint that exactly reaches max supply"""
 
         mock_deploy = Mock()
         mock_deploy.max_supply = "21000000"
@@ -328,12 +306,12 @@ class TestBRC20Validator:
         assert result.error_code is None
 
     def test_validate_mint_overflow_at_limit(self):
-        """Test mint when already at max supply"""
 
         mock_deploy = Mock()
         mock_deploy.max_supply = "21000000"
         mock_deploy.limit_per_op = "1000"
 
+u
         self.mock_db_session.query.return_value.filter.return_value.scalar.return_value = 21000000  # noqa: E501
 
         operation = {"tick": "OPQT", "amt": "1"}
@@ -344,7 +322,6 @@ class TestBRC20Validator:
         assert result.error_code == BRC20ErrorCodes.EXCEEDS_MAX_SUPPLY
 
     def test_get_total_minted_calculation(self):
-        """Test total minted calculation from database"""
         self.mock_db_session.query.return_value.filter.return_value.scalar.return_value = 5000000  # noqa: E501
 
         total = self.validator.get_total_minted("OPQT")
@@ -353,7 +330,6 @@ class TestBRC20Validator:
         self.mock_db_session.query.assert_called()
 
     def test_get_total_minted_no_mints(self):
-        """Test total minted when no mints exist"""
         self.mock_db_session.query.return_value.filter.return_value.scalar.return_value = None  # noqa: E501
 
         total = self.validator.get_total_minted("NEWTOKEN")

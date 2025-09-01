@@ -5,6 +5,7 @@ BRC-20 consensus rule validation service.
 from typing import Dict, Any, Optional, List
 from sqlalchemy.orm import Session
 from sqlalchemy import func, cast, BigInteger
+from decimal import Decimal
 from src.utils.exceptions import BRC20ErrorCodes, ValidationResult
 from src.utils.amounts import (
     is_valid_amount,
@@ -26,27 +27,11 @@ class BRC20Validator:
     """Validate operations according to consensus rules"""
 
     def __init__(self, db_session: Session):
-        """
-        Initialize validator
-
-        Args:
-            db_session: Database session for queries
-        """
         self.db = db_session
 
     def validate_deploy(
         self, operation: Dict[str, Any], intermediate_deploys: Optional[Dict] = None
     ) -> ValidationResult:
-        """
-        Validate deploy operation with intermediate state check
-
-        Args:
-            operation: Parsed deploy operation
-            intermediate_deploys: Intermediate deploy state for current block
-
-        Returns:
-            ValidationResult: Validation result
-        """
         ticker = operation.get("tick").upper()
         max_supply = operation.get("m")
         limit_per_op = operation.get("l")
@@ -89,17 +74,6 @@ class BRC20Validator:
         deploy: Optional[Deploy],
         intermediate_total_minted: Optional[Dict] = None,
     ) -> ValidationResult:
-        """
-        Validate mint operation with intermediate state support
-
-        Args:
-            operation: Parsed mint operation
-            deploy: Deploy record for the ticker
-            intermediate_total_minted: Intermediate total minted state for current block
-
-        Returns:
-            ValidationResult: Validation result
-        """
         ticker = operation.get("tick")
         amount = operation.get("amt")
 
@@ -136,22 +110,7 @@ class BRC20Validator:
         deploy: Optional[Deploy] = None,
         intermediate_balances=None,
     ) -> ValidationResult:
-        """
-        Validate transfer operation
-
-        Args:
-            operation: Parsed transfer operation
-            sender_balance: Sender's current balance as string
-            deploy: Deploy record (optional, for additional checks)
-
-        Returns:
-            ValidationResult: Validation result
-
-        CRITICAL RULES:
-        - Ticker must exist
-        - sender_balance ≥ amount
-        - NO limit_per_op verification (limit only applies to mints)
-        """
+        """Validate transfer operation"""
         ticker = operation.get("tick")
         amount = operation.get("amt")
 
@@ -181,22 +140,7 @@ class BRC20Validator:
     def validate_output_addresses(
         self, tx_outputs: List[Dict[str, Any]], operation_type: str = None
     ) -> ValidationResult:
-        """
-        Validate transaction outputs based on operation type
-
-        Args:
-            tx_outputs: List of transaction outputs
-            operation_type: Type of operation ('deploy', 'mint', 'transfer')
-
-        Returns:
-            ValidationResult: Validation result
-
-        RULES:
-        - Deploy: NO output validation required (can have only OP_RETURN)
-        - Mint/Transfer: Must have at least one standard output
-        - Accept P2PKH, P2SH, P2WPKH, P2WSH, P2TR
-        - NO dust limit constraint
-        """
+        """Validate transaction outputs based on operation type"""
         if not isinstance(tx_outputs, list) or not tx_outputs:
             return ValidationResult(
                 False,
@@ -207,7 +151,6 @@ class BRC20Validator:
         if operation_type == "deploy":
             return ValidationResult(True)
 
-        # ✅ FIX: Filter None values before checking
         has_standard_output = any(
             out is not None
             and out.get("scriptPubKey", {}).get("type") != "nulldata"
@@ -225,17 +168,6 @@ class BRC20Validator:
         return ValidationResult(True)
 
     def get_output_after_op_return_address(self, tx_outputs: List[Dict[str, Any]]) -> Optional[str]:
-        """
-        Get the address of the output AFTER the OP_RETURN for token allocation
-
-        Args:
-            tx_outputs: List of transaction outputs
-
-        Returns:
-            Optional[str]: Address of output after OP_RETURN, None if not found
-
-        RULE: Tokens are allocated to the output AFTER the OP_RETURN
-        """
         op_return_index = None
         for i, vout in enumerate(tx_outputs):
             if not isinstance(vout, dict):
@@ -255,7 +187,6 @@ class BRC20Validator:
             return None
 
         next_output = tx_outputs[op_return_index + 1]
-        # ✅ FIX: Check if next_output is None
         if next_output is None or not isinstance(next_output, dict):
             return None
 
@@ -281,15 +212,6 @@ class BRC20Validator:
         return None
 
     def get_current_supply(self, ticker: str) -> str:
-        """
-        Get current total supply for a ticker
-
-        Args:
-            ticker: Token ticker
-
-        Returns:
-            str: Current total supply as string
-        """
         total = (
             self.db.query(func.coalesce(func.sum(cast(Balance.balance, BigInteger)), 0))
             .filter(Balance.ticker.ilike(ticker))
@@ -299,16 +221,6 @@ class BRC20Validator:
         return str(total or 0)
 
     def get_total_minted(self, ticker: str, intermediate_total_minted: Optional[Dict] = None) -> str:
-        """
-        Get current total minted amount for ticker, prioritizing intermediate state
-
-        Args:
-            ticker: Token ticker
-            intermediate_total_minted: Intermediate total minted state for current block
-
-        Returns:
-            str: Total minted amount as string
-        """
         from src.models.transaction import BRC20Operation
 
         normalized_ticker = ticker.upper()
@@ -317,7 +229,7 @@ class BRC20Validator:
             return intermediate_total_minted[normalized_ticker]
 
         db_total = (
-            self.db.query(func.coalesce(func.sum(cast(BRC20Operation.amount, BigInteger)), "0"))
+            self.db.query(func.coalesce(func.sum(BRC20Operation.amount), 0))
             .filter(
                 BRC20Operation.ticker.ilike(normalized_ticker),
                 BRC20Operation.operation == "mint",
@@ -326,7 +238,7 @@ class BRC20Validator:
             .scalar()
         )
 
-        return str(db_total or "0")
+        return str(db_total or 0)
 
     def validate_mint_overflow(
         self,
@@ -335,23 +247,7 @@ class BRC20Validator:
         deploy: Deploy,
         intermediate_total_minted=None,
     ) -> ValidationResult:
-        """
-        CRITICAL: Validate that mint doesn't exceed max supply
-
-        ALGORITHM:
-        1. Get current total minted for ticker (from valid mint operations)
-        2. Add proposed mint amount to current total
-        3. Compare new total against max supply
-        4. REJECT if new total > max supply
-
-        Args:
-            ticker: Token ticker
-            mint_amount: Amount to mint
-            deploy: Deploy record with max_supply
-
-        Returns:
-            ValidationResult: Valid if mint doesn't exceed max supply
-        """
+        """Validate that mint doesn't exceed max supply"""
         current_total_minted = self.get_total_minted(ticker, intermediate_total_minted=intermediate_total_minted)
 
         try:
@@ -380,29 +276,9 @@ class BRC20Validator:
         return ValidationResult(True)
 
     def get_first_standard_output_address(self, tx_outputs: list) -> str | None:
-        """
-        Get the first standard (non-OP_RETURN) output address from transaction outputs.
-
-        Args:
-            tx_outputs: List of transaction outputs
-
-        Returns:
-            The first standard output address or None if no standard output found
-        """
         return self.get_output_after_op_return_address(tx_outputs)
 
-    def get_balance(self, address: str, ticker: str, intermediate_balances: Optional[Dict] = None) -> str:
-        """
-        Get balance for specific address and ticker, prioritizing intermediate state
-
-        Args:
-            address: Bitcoin address
-            ticker: Token ticker
-            intermediate_balances: Intermediate balance state for current block
-
-        Returns:
-            str: Balance as string (0 if not found)
-        """
+    def get_balance(self, address: str, ticker: str, intermediate_balances: Optional[Dict] = None) -> Decimal:
         normalized_ticker = ticker.upper()
         key = (address, normalized_ticker)
 
@@ -413,19 +289,9 @@ class BRC20Validator:
             self.db.query(Balance).filter(Balance.address == address, Balance.ticker.ilike(normalized_ticker)).first()
         )
 
-        return balance_record.balance if balance_record else "0"
+        return balance_record.balance if balance_record else Decimal("0")
 
     def get_deploy_record(self, ticker: str, intermediate_deploys: Optional[Dict] = None) -> Optional[Deploy]:
-        """
-        Get deploy record for ticker, prioritizing intermediate state
-
-        Args:
-            ticker: Token ticker
-            intermediate_deploys: Intermediate deploy state for current block
-
-        Returns:
-            Optional[Deploy]: Deploy record if exists
-        """
         normalized_ticker = ticker.upper()
 
         if intermediate_deploys is not None and normalized_ticker in intermediate_deploys:
@@ -442,29 +308,14 @@ class BRC20Validator:
         intermediate_total_minted: Optional[Dict] = None,
         intermediate_deploys: Optional[Dict] = None,
     ) -> ValidationResult:
-        """
-        Validate complete BRC-20 operation with all consensus rules
-
-        Args:
-            operation: Parsed BRC-20 operation
-            tx_outputs: Transaction outputs
-            sender_address: Sender address (for transfers)
-            intermediate_balances: intermediate balances
-            intermediate_total_minted: intermediate total minted
-            intermediate_deploys: intermediate deploys
-
-        Returns:
-            ValidationResult: Complete validation result
-        """
+        """Validate complete BRC-20 operation with all consensus rules"""
         op_type = operation.get("op")
         ticker = operation.get("tick")
 
-        # Validate output addresses with operation type
         output_validation = self.validate_output_addresses(tx_outputs, op_type)
         if not output_validation.is_valid:
             return output_validation
 
-        # For mint and transfer, ensure there's a valid recipient after OP_RETURN
         if op_type in ["mint", "transfer"]:
             recipient_address = self.get_output_after_op_return_address(tx_outputs)
             if not recipient_address:
@@ -474,17 +325,15 @@ class BRC20Validator:
                     f"No valid recipient found after OP_RETURN for {op_type} operation",
                 )
 
-        # Get deploy record
         deploy = self.get_deploy_record(ticker, intermediate_deploys=intermediate_deploys)
 
         if op_type == "deploy":
             return self.validate_deploy(operation, intermediate_deploys=intermediate_deploys)
 
-        elif op_type == "mint":
-            # Use corrected validate_mint that calculates current supply internally
+        elif op_type == "mint":  # pylint: disable=no-else-return
             return self.validate_mint(operation, deploy, intermediate_total_minted=intermediate_total_minted)
 
-        elif op_type == "transfer":
+        elif op_type == "transfer":  # pylint: disable=no-else-return
             if sender_address is None:
                 return ValidationResult(
                     False,
@@ -500,7 +349,7 @@ class BRC20Validator:
                 intermediate_balances=intermediate_balances,
             )
 
-        else:
+        else:  # pylint: disable=no-else-return
             return ValidationResult(
                 False,
                 BRC20ErrorCodes.INVALID_OPERATION,

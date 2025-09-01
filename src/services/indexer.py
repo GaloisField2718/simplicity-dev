@@ -1,7 +1,7 @@
 """
-Main blockchain indexer service for Universal BRC-20 Extension.
+Main Bitcoin indexer service for Universal BRC-20 Extension.
 
-This service orchestrates the complete blockchain synchronization process,
+This service orchestrates the complete Bitcoin synchronization process,
 including sequential block processing, reorg handling, and state management.
 """
 
@@ -26,8 +26,6 @@ from src.utils.exceptions import IndexerError, TransferType
 
 @dataclass
 class BlockProcessingResult:
-    """Result of processing a single block"""
-
     height: int
     block_hash: str
     tx_count: int
@@ -39,8 +37,6 @@ class BlockProcessingResult:
 
 @dataclass
 class SyncStatus:
-    """Current synchronization status"""
-
     last_processed_height: int
     blockchain_height: int
     blocks_behind: int
@@ -52,9 +48,6 @@ class SyncStatus:
 class IndexerService:
     """
     Main blockchain indexation orchestrator.
-
-    Handles sequential block processing, reorg detection, and state management
-    while maintaining data consistency and performance.
     """
 
     def __init__(
@@ -63,15 +56,9 @@ class IndexerService:
         bitcoin_rpc: BitcoinRPCService,
         initial_populate_data: Optional[Dict[int, dict]] = None,
     ):
-        """
-        Initialize the indexer service.
-
-        Args:
-            db_session: Database session for operations
-            bitcoin_rpc: Bitcoin RPC service for blockchain interaction
-        """
         self.db = db_session
         self.rpc = bitcoin_rpc
+
         self.processor = BRC20Processor(db_session, bitcoin_rpc)
         self.reorg_handler = ReorgHandler(db_session, bitcoin_rpc)
         self.error_handler = ErrorHandler()
@@ -83,13 +70,7 @@ class IndexerService:
         self.initial_populate_data = initial_populate_data
 
     def start_indexing(self, start_height: Optional[int] = None, max_blocks: Optional[int] = None) -> None:
-        """
-        Start indexation from specified height.
-
-        Args:
-            start_height: Optional starting height, uses config default if None
-            max_blocks: Optional maximum number of blocks to process (for testing)
-        """
+        """Start indexation from specified height."""
         try:
             if start_height is None:
                 start_height = self._determine_start_height()
@@ -174,16 +155,7 @@ class IndexerService:
             raise IndexerError(f"Indexing failed: {e}")
 
     def start_continuous_indexing(self, start_height: Optional[int] = None, max_blocks: Optional[int] = None) -> None:
-        """
-        Start continuous indexation with robust RPC error handling and automatic recovery.
-
-        This method includes circuit breaker patterns and exponential backoff to handle
-        RPC connection issues like "Request-sent" errors that can cause indexing to stop.
-
-        Args:
-            start_height: Optional starting height, uses config default if None
-            max_blocks: Optional maximum number of blocks to process per batch
-        """
+        """Start continuous indexation with robust RPC error handling and automatic recovery."""
         consecutive_rpc_failures = 0
         max_consecutive_rpc_failures = 10
         rpc_failure_backoff = 1.0
@@ -393,15 +365,6 @@ class IndexerService:
             raise IndexerError(f"Continuous indexing failed: {e}")
 
     def process_block(self, block_height: int) -> BlockProcessingResult:
-        """
-        Process a single block with optimistic locking.
-
-        Args:
-            block_height: Height of block to process
-
-        Returns:
-            BlockProcessingResult with statistics
-        """
         start_time = time.time()
 
         if self.initial_populate_data and block_height in self.initial_populate_data:
@@ -702,13 +665,7 @@ class IndexerService:
             raise IndexerError(f"Failed to process block {block_height}: {e}")
 
     def process_block_transactions(self, block: Dict[str, Any]) -> List[Any]:
-        """
-        Process all transactions in a block with ULTRA-FAST BRC-20 pre-filtering.
-        Args:
-            block: Block data from Bitcoin RPC
-        Returns:
-            List of processing results, sorted by original transaction index.
-        """
+        """Process all transactions in a block with FAST BRC-20 pre-filtering."""
         intermediate_balances = {}
         intermediate_total_minted = {}
         intermediate_deploys = {}
@@ -790,6 +747,24 @@ class IndexerService:
                 )()
                 processed_results.append(error_result)
 
+        try:
+            self.processor.flush_pending_balances()
+            self.logger.debug(
+                "Flushed pending balance updates for block",
+                height=block["height"],
+                marketplace_count=len(marketplace_txs),
+                simple_count=len(simple_txs),
+            )
+        except Exception as e:
+            self.logger.critical(
+                "CRITICAL: Balance flush failed - INDEXER STOPPING TO PREVENT INCONSISTENCY",
+                height=block["height"],
+                error=str(e),
+                action="immediate_stop_to_prevent_database_corruption",
+            )
+            self.processor.clear_pending_balances()
+            raise IndexerError(f"Balance flush failed at block {block['height']}: {e}")
+
         all_results = []
         processed_indices = {r.original_tx_index for r in processed_results}
 
@@ -814,16 +789,6 @@ class IndexerService:
         return all_results
 
     def _is_marketplace_transfer(self, tx_data: dict, block_height: int) -> bool:
-        """
-        Quick classification to identify marketplace transfers.
-
-        Args:
-            tx_data: Transaction data from Bitcoin RPC
-            block_height: Current block height
-
-        Returns:
-            True if transaction is a marketplace transfer, False otherwise
-        """
         try:
             hex_data, _ = self.processor.parser.extract_op_return_data(tx_data)
             if not hex_data:
@@ -854,17 +819,6 @@ class IndexerService:
         processed_results: List[Any],
         block_height: int,
     ) -> None:
-        """
-        Validate that processing results are consistent with original transactions.
-
-        Args:
-            original_transactions: Original block transactions
-            processed_results: Results from processing
-            block_height: Block height for logging
-
-        Raises:
-            IndexerError: If validation fails
-        """
         expected_count = len(original_transactions) - 1
         actual_count = len(processed_results)
 
@@ -887,12 +841,6 @@ class IndexerService:
             )
 
     def get_sync_status(self) -> SyncStatus:
-        """
-        Get current synchronization status.
-
-        Returns:
-            SyncStatus with current progress information
-        """
         try:
             last_processed = self.get_last_processed_height()
 
@@ -930,12 +878,6 @@ class IndexerService:
             )
 
     def get_last_processed_height(self) -> int:
-        """
-        Get height of last processed block.
-
-        Returns:
-            Height of last processed block, or START_BLOCK_HEIGHT - 1 if none
-        """
         try:
             last_block = self.db.query(ProcessedBlock).order_by(desc(ProcessedBlock.height)).first()
             return last_block.height if last_block else settings.START_BLOCK_HEIGHT - 1
@@ -944,16 +886,6 @@ class IndexerService:
             return settings.START_BLOCK_HEIGHT - 1
 
     def is_block_processed(self, height: int, block_hash: str) -> bool:
-        """
-        Check if block is already processed with correct hash.
-
-        Args:
-            height: Block height to check
-            block_hash: Expected block hash
-
-        Returns:
-            True if block is processed with matching hash
-        """
         try:
             processed_block = self.db.query(ProcessedBlock).filter_by(height=height).first()
             return processed_block is not None and processed_block.block_hash == block_hash
@@ -962,16 +894,6 @@ class IndexerService:
             return False
 
     def verify_chain_continuity(self, start_height: int, end_height: int) -> bool:
-        """
-        Verify no gaps in processed blocks.
-
-        Args:
-            start_height: Starting height to check
-            end_height: Ending height to check
-
-        Returns:
-            True if no gaps found
-        """
         try:
             expected_count = end_height - start_height + 1
             actual_count = (
@@ -989,7 +911,6 @@ class IndexerService:
             return False
 
     def _determine_start_height(self) -> int:
-        """Determine starting height for indexing"""
         last_processed = self.get_last_processed_height()
 
         if last_processed >= settings.START_BLOCK_HEIGHT:
@@ -998,20 +919,11 @@ class IndexerService:
             return settings.START_BLOCK_HEIGHT
 
     def _should_check_reorg(self, height: int) -> bool:
-        """Determine if we should check for reorg at this height"""
         return height > settings.START_BLOCK_HEIGHT
 
     def _log_marketplace_prioritization_metrics(
         self, block_height: int, marketplace_count: int, other_count: int
     ) -> None:
-        """
-        Log detailed metrics about marketplace prioritization.
-
-        Args:
-            block_height: Current block height
-            marketplace_count: Number of marketplace transactions
-            other_count: Number of other transactions
-        """
         total_txs = marketplace_count + other_count
         marketplace_percentage = (marketplace_count / total_txs * 100) if total_txs > 0 else 0
 
@@ -1025,15 +937,6 @@ class IndexerService:
         )
 
     def _ultra_fast_brc20_pre_scan(self, transactions: List[Dict]) -> List[Tuple[int, Dict]]:
-        """
-        ULTRA-FAST PRE-SCAN to identify BRC-20 candidate transactions
-
-        Args:
-            transactions: List of transaction data from Bitcoin RPC
-
-        Returns:
-            List of (tx_index, tx_data) tuples for BRC-20 candidates
-        """
         candidates = []
 
         for tx_index, tx_data in enumerate(transactions):
@@ -1064,15 +967,7 @@ class IndexerService:
         return candidates
 
     def _is_brc20_candidate_ultra_fast(self, hex_script: str) -> bool:
-        """
-        FAST BRC-20 candidate detection using minimal processing
-
-        Args:
-            hex_script: Complete script hex (with OP_RETURN prefix)
-
-        Returns:
-            bool: True if likely BRC-20 candidate, False otherwise
-        """
+        """FAST BRC-20 candidate detection using minimal processing"""
         try:
             if len(hex_script) < 20:
                 return False

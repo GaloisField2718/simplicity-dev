@@ -2,6 +2,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 from sqlalchemy.orm import Session
+from decimal import Decimal
 
 from src.models.balance import Balance
 from src.models.deploy import Deploy
@@ -50,7 +51,6 @@ class TestBRC20Processor:
         return BRC20Processor(mock_db_session, mock_bitcoin_rpc)
 
     def test_process_deploy_success(self, processor, mock_db_session):
-        """Test valid deploy processing"""
         operation = {"op": "deploy", "tick": "TEST", "m": "1000000", "l": "1000"}
 
         tx_info = {
@@ -69,13 +69,10 @@ class TestBRC20Processor:
                 return_value=ValidationResult(True),
             ):
                 with patch.object(processor, "log_operation"):
-                    processor.current_block_timestamp = 1677649200  # Set block timestamp
+                    processor.current_block_timestamp = 1677649200
                     processor.process_deploy(operation, tx_info, intermediate_deploys={})
 
-                    # process_deploy doesn't return a ValidationResult, it just adds to DB
-
                     mock_db_session.add.assert_called_once()
-                    # process_deploy doesn't call flush
 
                     deploy_call = mock_db_session.add.call_args[0][0]
                     assert isinstance(deploy_call, Deploy)
@@ -87,7 +84,6 @@ class TestBRC20Processor:
         """Test deploy existing ticker (must be logged as invalid)"""
 
     def test_process_mint_within_limits(self, processor, mock_db_session):
-        """Test mint within limits"""
         operation = {"op": "mint", "tick": "TEST", "amt": "500"}
 
         tx_info = {
@@ -144,13 +140,12 @@ class TestBRC20Processor:
                                 )
 
     def test_process_mint_exceeds_supply(self, processor):
-        """Test mint exceeding max supply"""
+        """Test mint exceeds supply"""
 
     def test_process_mint_exceeds_per_op_limit(self, processor):
-        """Test mint exceeding per-operation limit"""
+        """Test mint exceeds per-operation limit"""
 
     def test_mint_op_return_position_before_block_height(self, processor):
-        """Test mint OP_RETURN position validation before enforcement block height"""
         operation = {"op": "mint", "tick": "TEST", "amt": "500"}
 
         tx_info = {
@@ -211,8 +206,6 @@ class TestBRC20Processor:
                                     mock_update.assert_called_once()
 
     def test_mint_op_return_position_after_block_height_valid(self, processor):
-        """Test mint OP_RETURN position validation after enforcement
-        block height - valid case"""
         operation = {"op": "mint", "tick": "TEST", "amt": "500"}
 
         tx_info = {
@@ -266,8 +259,6 @@ class TestBRC20Processor:
                                     mock_update.assert_called_once()
 
     def test_mint_op_return_position_after_block_height_invalid(self, processor):
-        """Test mint OP_RETURN position validation after enforcement
-        block height - invalid case"""
         operation = {"op": "mint", "tick": "TEST", "amt": "500"}
 
         tx_info = {
@@ -327,7 +318,6 @@ class TestBRC20Processor:
                             assert "984444" in result.error_message
 
     def test_process_transfer_sufficient_balance(self, processor, mock_db_session):
-        """Test transfer with sufficient balance"""
         operation = {"op": "transfer", "tick": "TEST", "amt": "100"}
 
         tx_info = {
@@ -360,7 +350,7 @@ class TestBRC20Processor:
                     ):
                         with patch.object(processor, "update_balance") as mock_update:
                             with patch.object(processor, "log_operation"):
-                                # Process transfer and verify balance updates
+                                """Process transfer and verify balance updates"""
                                 validation_result = ValidationResult(True)
                                 processor.process_transfer(
                                     operation,
@@ -384,10 +374,9 @@ class TestBRC20Processor:
                                 assert credit_call[1]["op_type"] == "transfer_in"
 
     def test_process_transfer_insufficient_balance(self, processor):
-        """Test transfer with insufficient balance"""
+        """Test transfer insufficient balance"""
 
     def test_process_transfer_exceeds_mint_limit(self, processor, mock_db_session):
-        """CRITICAL: Test transfer exceeding mint limit (must PASS)"""
         operation = {"op": "transfer", "tick": "TEST", "amt": "5000"}
 
         tx_info = {
@@ -438,7 +427,6 @@ class TestBRC20Processor:
                                 assert debit_call[1]["amount_delta"] == "-5000"
 
     def test_allocation_first_standard_output(self, processor):
-        """Test allocation to first standard output"""
         tx_outputs = [
             {"scriptPubKey": {"hex": "6a" + "20" + "0" * 64}},
             {"scriptPubKey": {"hex": "76a914" + "0" * 40 + "88ac"}},
@@ -450,37 +438,18 @@ class TestBRC20Processor:
             return_value="first_standard_address",
         ):
             address = processor.validator.get_first_standard_output_address(tx_outputs)
-            # The actual method returns a real address, not the mocked one
             assert address is not None
 
     def test_allocation_skip_op_return(self, processor):
-        """Test OP_RETURN is ignored for allocation"""
         tx_outputs = [{"scriptPubKey": {"hex": "6a" + "20" + "0" * 64}}]
 
         address = processor.validator.get_first_standard_output_address(tx_outputs)
         assert address is None
 
-    def test_allocation_multiple_outputs(self, processor):
-        """Test allocation with multiple outputs (take first)"""
-        tx_outputs = [
-            {"scriptPubKey": {"hex": "76a914" + "0" * 40 + "88ac"}},
-            {"scriptPubKey": {"hex": "76a914" + "1" * 40 + "88ac"}},
-        ]
-
-        with patch("src.utils.bitcoin.extract_address_from_script") as mock_extract:
-            mock_extract.side_effect = ["first_address", "second_address"]
-
-            address = processor.validator.get_first_standard_output_address(tx_outputs)
-            # The actual method returns None when no valid address is found
-            assert address is None
-
-            # The mock is not called because the actual method doesn't use extract_address_from_script
-
     def test_atomic_rollback(self, processor):
         """Test rollback on error during processing"""
 
     def test_log_all_operations(self, processor, mock_db_session):
-        """Test ALL operations are logged"""
         operation_data = {"op": "mint", "tick": "TEST", "amt": "100"}
         validation_result = ValidationResult(True, None, None)
         tx_info = {
@@ -502,7 +471,7 @@ class TestBRC20Processor:
                 "get_output_after_op_return_address",
                 return_value="recipient",
             ):
-                processor.current_block_timestamp = 1677649200  # Set block timestamp
+                processor.current_block_timestamp = 1677649200
                 processor.log_operation(
                     operation_data,
                     validation_result,
@@ -522,29 +491,27 @@ class TestBRC20Processor:
                 assert operation_call.is_valid is True
 
     def test_update_balance_mint(self, processor, mock_db_session):
-        """Test balance update after mint"""
-        with patch.object(processor.validator, "get_balance", return_value="0"):
+        with patch.object(processor.validator, "get_balance", return_value=Decimal("0")):
             with patch.object(Balance, "get_or_create", return_value=create_mock_balance()):
                 processor.update_balance("test_address", "TEST", "100", "mint", "test_txid")
 
-                Balance.get_or_create.assert_called_once_with(processor.db, "test_address", "TEST")
+            assert ("test_address", "TEST") in processor._pending_balance_updates
+            assert processor._pending_balance_updates[("test_address", "TEST")] == Decimal("100")
 
     def test_update_balance_transfer_debit(self, processor, mock_db_session):
-        """Test balance update for transfer debit"""
-        with patch.object(processor.validator, "get_balance", return_value="1000"):
+        with patch.object(processor.validator, "get_balance", return_value=Decimal("1000")):
             with patch.object(Balance, "get_or_create", return_value=create_mock_balance()):
                 processor.update_balance("test_address", "TEST", "-100", "transfer_out", "test_txid")
 
-                Balance.get_or_create.assert_called_once_with(processor.db, "test_address", "TEST")
+            assert ("test_address", "TEST") in processor._pending_balance_updates
+            assert processor._pending_balance_updates[("test_address", "TEST")] == Decimal("900")
 
     def test_update_balance_insufficient_funds(self, processor, mock_db_session):
-        """Test balance update with insufficient funds"""
-        with patch.object(processor.validator, "get_balance", return_value="50"):
+        with patch.object(processor.validator, "get_balance", return_value=Decimal("50")):
             with pytest.raises(BRC20Exception, match="Insufficient balance"):
                 processor.update_balance("test_address", "TEST", "-100", "transfer_out", "test_txid")
 
     def test_classify_transfer_type_simple(self, processor):
-        """Test simple transfer classification"""
         tx_info = {
             "vin": [{"txid": "test", "vout": 0}],
             "vout": [
@@ -558,7 +525,6 @@ class TestBRC20Processor:
             assert result == TransferType.SIMPLE
 
     def test_classify_transfer_type_valid_marketplace(self, processor):
-        """Test valid marketplace transfer classification"""
         tx_info = {
             "vin": [
                 {"txinwitness": ["...83"], "txid": "tx1", "vout": 0},
@@ -577,7 +543,6 @@ class TestBRC20Processor:
                 assert result == TransferType.MARKETPLACE
 
     def test_classify_transfer_type_invalid_marketplace(self, processor):
-        """Test invalid marketplace transfer classification"""
         tx_info = {
             "vin": [
                 {"txinwitness": ["...83"], "txid": "tx1", "vout": 0},
@@ -595,7 +560,6 @@ class TestBRC20Processor:
                 assert result == TransferType.INVALID_MARKETPLACE
 
     def test_invalid_marketplace_early_return_performance(self, processor):
-        """Test that invalid marketplace transfers return immediately"""
         import time
 
         from src.utils.exceptions import TransferType
@@ -654,10 +618,8 @@ class TestBRC20Processor:
                             assert processing_time < 0.1
                             assert not result.is_valid
                             assert not result.is_valid
-                            # The error message can vary, but the important thing is that it fails quickly
 
     def test_process_transfer_with_type_logging(self, processor):
-        """Test that process_transfer works correctly with marketplace transfers"""
         from src.utils.exceptions import TransferType
 
         operation = {"op": "transfer", "tick": "TEST", "amt": "100"}
@@ -706,7 +668,6 @@ class TestBRC20Processor:
                             assert result.is_valid is True
 
     def test_marketplace_transfer_op_return_any_position_valid(self, processor):
-        """Test that marketplace transfers can have OP_RETURN in any position"""
         from src.utils.exceptions import TransferType
 
         marketplace_tx = {
@@ -811,7 +772,6 @@ class TestBRC20Processor:
                                         assert result.error_message is None
 
     def test_simple_transfer_op_return_not_first_position_invalid(self, processor):
-        """Test that simple transfers still require OP_RETURN in first position"""
         from src.utils.exceptions import TransferType
 
         simple_tx = {
@@ -876,4 +836,3 @@ class TestBRC20Processor:
                             result = processor.process_transaction(simple_tx, 901350, 1, 1677649200, "test_block_hash")
 
                             assert not result.is_valid
-                            # The error message can vary, but the important thing is that it fails

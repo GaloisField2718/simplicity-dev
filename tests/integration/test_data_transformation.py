@@ -4,10 +4,8 @@ from src.services.data_transformation_service import DataTransformationService
 
 
 class TestDataTransformation:
-    """Test suite for DataTransformationService"""
 
     def test_transform_ticker_info(self):
-        """Test ticker information transformation"""
         backend_data = {
             "tick": "OPQT",
             "decimals": 18,
@@ -37,8 +35,6 @@ class TestDataTransformation:
         assert result["remaining_supply"] == "20993000"  # 21000000 - 7000
 
     def test_transform_operation(self):
-        """Test operation transformation for mint
-        (address already null from core processor)"""
         backend_data = {
             "id": 1,
             "txid": "def456ghi789",
@@ -63,7 +59,7 @@ class TestDataTransformation:
         assert result["inscription_id"] is None
         assert result["op"] == "mint"
         assert result["tick"] == "OPQT"
-        assert result["amount_str"] == "1000"
+        assert result["amount"] == "1000"
         assert result["block_height"] == 875001
         assert result["block_hash"] == "block123"
         assert result["tx_index"] == 2
@@ -74,7 +70,6 @@ class TestDataTransformation:
         assert result["error"] is None
 
     def test_transform_address_balance(self):
-        """Test address balance transformation"""
         backend_data = {
             "pkscript": "script123",
             "ticker": "OPQT",
@@ -93,7 +88,6 @@ class TestDataTransformation:
         assert result["block_height"] == 875002
 
     def test_transform_holder_info(self):
-        """Test holder information transformation"""
         backend_data = {
             "ticker": "OPQT",
             "address": "bc1qholder123",
@@ -111,14 +105,13 @@ class TestDataTransformation:
         assert result["pkscript"] == ""
 
     def test_transform_transaction_operation(self):
-        """Test transaction operation transformation for transfer"""
         backend_data = {
             "id": 2,
             "tx_id": "tx123abc456",
             "txid": "tx123abc456",
             "op": "transfer",
             "ticker": "OPQT",
-            "amount_str": "500",
+            "amount": "500",
             "block_height": 875004,
             "timestamp": "2023-05-06T12:51:40Z",
             "from_address": "bc1qfrom456",
@@ -131,22 +124,20 @@ class TestDataTransformation:
         assert result["tx_id"] == "tx123abc456"
         assert result["op"] == "transfer"
         assert result["ticker"] == "OPQT"
-        assert result["amount_str"] == "500"
+        assert result["amount"] == "500"
         assert result["block_height"] == 875004
         assert result["timestamp"].endswith("Z")
         assert result["from_address"] == "bc1qfrom456"
         assert result["valid"] is True
 
     def test_transform_transaction_operation_mint(self):
-        """Test transaction operation transformation for mint
-        (from_address already null from core processor)"""
         backend_data = {
             "id": 3,
             "tx_id": "tx789def012",
             "txid": "tx789def012",
             "op": "mint",
             "ticker": "OPQT",
-            "amount_str": "1000",
+            "amount": "1000",
             "block_height": 875005,
             "timestamp": "2023-05-06T12:53:20Z",
             "from_address": None,
@@ -160,7 +151,7 @@ class TestDataTransformation:
         assert result["tx_id"] == "tx789def012"
         assert result["op"] == "mint"
         assert result["ticker"] == "OPQT"
-        assert result["amount_str"] == "1000"
+        assert result["amount"] == "1000"
         assert result["block_height"] == 875005
         assert result["timestamp"].endswith("Z")
         assert result["from_address"] is None
@@ -168,15 +159,13 @@ class TestDataTransformation:
         assert result["valid"] is True
 
     def test_transform_transaction_operation_deploy(self):
-        """Test transaction operation transformation for deploy
-        (from_address should also be null)"""
         backend_data = {
             "id": 4,
             "tx_id": "tx999abc456",
             "txid": "tx999abc456",
             "op": "deploy",
             "ticker": "NEWT",
-            "amount_str": None,
+            "amount": None,
             "block_height": 875010,
             "timestamp": "2023-05-06T12:56:40Z",
             "from_address": None,
@@ -190,7 +179,7 @@ class TestDataTransformation:
         assert result["tx_id"] == "tx999abc456"
         assert result["op"] == "deploy"
         assert result["ticker"] == "NEWT"
-        assert result["amount_str"] is None
+        assert result["amount"] is None
         assert result["block_height"] == 875010
         assert result["timestamp"].endswith("Z")
         assert result["from_address"] is None
@@ -198,15 +187,13 @@ class TestDataTransformation:
         assert result["valid"] is True
 
     def test_transform_transaction_operation_transfer(self):
-        """Test transaction operation transformation for transfer
-        (from_address should remain as sender address)"""
         backend_data = {
             "id": 5,
             "tx_id": "tx111ccc777",
             "txid": "tx111ccc777",
             "op": "transfer",
             "ticker": "OPQT",
-            "amount_str": "500",
+            "amount": "500",
             "block_height": 875015,
             "timestamp": "2023-05-06T12:60:00Z",
             "from_address": "bc1qsender456",
@@ -220,7 +207,7 @@ class TestDataTransformation:
         assert result["tx_id"] == "tx111ccc777"
         assert result["op"] == "transfer"
         assert result["ticker"] == "OPQT"
-        assert result["amount_str"] == "500"
+        assert result["amount"] == "500"
         assert result["block_height"] == 875015
         assert result["timestamp"].endswith("Z")
         assert result["from_address"] == "bc1qsender456"
@@ -228,7 +215,6 @@ class TestDataTransformation:
         assert result["valid"] is True
 
     def test_transform_indexer_status(self):
-        """Test indexer status transformation"""
         backend_data = {
             "network_height": 875010,
             "indexed_height": 875008,
@@ -242,7 +228,6 @@ class TestDataTransformation:
         assert result["last_indexed_brc20_op_block"] == 875007
 
     def test_transform_paginated_response(self):
-        """Test paginated response transformation"""
         backend_response = {
             "total": 100,
             "start": 0,
@@ -259,7 +244,6 @@ class TestDataTransformation:
         assert result[2]["item"] == 3
 
     def test_transform_paginated_response_direct_list(self):
-        """Test paginated response transformation with direct list"""
         backend_response = [{"item": 1}, {"item": 2}]
 
         result = DataTransformationService.transform_paginated_response(backend_response)
@@ -270,7 +254,6 @@ class TestDataTransformation:
         assert result[1]["item"] == 2
 
     def test_format_timestamp_unix(self):
-        """Test timestamp formatting from Unix timestamp"""
         timestamp = 1683374508
 
         result = DataTransformationService._format_timestamp(timestamp)
@@ -280,7 +263,6 @@ class TestDataTransformation:
         assert "T" in result
 
     def test_format_timestamp_datetime(self):
-        """Test timestamp formatting from datetime"""
         dt = datetime(2023, 5, 6, 13, 51, 48)
 
         result = DataTransformationService._format_timestamp(dt)
@@ -290,7 +272,6 @@ class TestDataTransformation:
         assert "2023-05-06T13:51:48Z" == result
 
     def test_format_timestamp_string(self):
-        """Test timestamp formatting from string"""
         timestamp = "2023-05-06T13:51:48"
 
         result = DataTransformationService._format_timestamp(timestamp)
@@ -298,7 +279,6 @@ class TestDataTransformation:
         assert result == "2023-05-06T13:51:48Z"
 
     def test_format_timestamp_string_with_z(self):
-        """Test timestamp formatting from string already with Z"""
         timestamp = "2023-05-06T13:51:48Z"
 
         result = DataTransformationService._format_timestamp(timestamp)
@@ -306,19 +286,16 @@ class TestDataTransformation:
         assert result == "2023-05-06T13:51:48Z"
 
     def test_format_timestamp_none(self):
-        """Test timestamp formatting with None"""
         result = DataTransformationService._format_timestamp(None)
 
         assert result is None
 
     def test_format_timestamp_invalid(self):
-        """Test timestamp formatting with invalid input"""
         result = DataTransformationService._format_timestamp("invalid")
 
         assert result == "invalidZ"
 
     def test_calculate_remaining_supply(self):
-        """Test remaining supply calculation"""
         max_supply = "21000000"
         current_supply = "7000"
 
@@ -327,7 +304,6 @@ class TestDataTransformation:
         assert result == "20993000"
 
     def test_calculate_remaining_supply_zero(self):
-        """Test remaining supply calculation with zero current supply"""
         max_supply = "21000000"
         current_supply = "0"
 
@@ -336,7 +312,6 @@ class TestDataTransformation:
         assert result == "21000000"
 
     def test_calculate_remaining_supply_exceeded(self):
-        """Test remaining supply calculation when current exceeds max"""
         max_supply = "1000"
         current_supply = "1500"
 
@@ -345,7 +320,6 @@ class TestDataTransformation:
         assert result == "0"
 
     def test_calculate_remaining_supply_invalid_input(self):
-        """Test remaining supply calculation with invalid input"""
         max_supply = "invalid"
         current_supply = "1000"
 
@@ -354,7 +328,6 @@ class TestDataTransformation:
         assert result == "0"
 
     def test_add_ticker_to_holders(self):
-        """Test adding ticker to holders"""
         holders = [
             {"address": "bc1qholder1", "balance": "1000"},
             {"address": "bc1qholder2", "balance": "2000"},
@@ -370,7 +343,6 @@ class TestDataTransformation:
         assert result[1]["address"] == "bc1qholder2"
 
     def test_add_ticker_to_operations(self):
-        """Test adding ticker to operations"""
         operations = [
             {"txid": "tx1", "operation": "mint"},
             {"txid": "tx2", "operation": "transfer", "tick": "EXISTING"},
@@ -384,7 +356,6 @@ class TestDataTransformation:
         assert result[1]["tick"] == "EXISTING"
 
     def test_transform_with_missing_fields(self):
-        """Test transformation with missing fields"""
         backend_data = {
             "tick": "OPQT",
         }
@@ -398,7 +369,6 @@ class TestDataTransformation:
         assert result["remaining_supply"] == "0"
 
     def test_transform_empty_data(self):
-        """Test transformation with empty data"""
         backend_data = {}
 
         result = DataTransformationService.transform_ticker_info(backend_data)

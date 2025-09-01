@@ -1,5 +1,6 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_serializer
 from typing import List, Optional
+from decimal import Decimal
 
 
 class OrmConfig(BaseModel):
@@ -10,16 +11,20 @@ class OrmConfig(BaseModel):
 class Brc20InfoItem(OrmConfig):
     ticker: str = Field(description="BRC-20 ticker symbol")
     decimals: int = Field(default=8, description="Token decimals")
-    max_supply: str = Field(description="Maximum token supply as string")
-    limit_per_mint: str = Field(description="Maximum amount per mint as string")
+    max_supply: Decimal = Field(description="Maximum token supply")
+    limit_per_mint: Decimal = Field(description="Maximum amount per mint")
     actual_deploy_txid_for_api: str = Field(description="Deploy transaction ID (txid)")
     deploy_tx_id: str = Field(description="Deploy transaction ID (same as actual_deploy_txid_for_api)")
     deploy_block_height: int = Field(description="Block height of deployment")
     deploy_timestamp: str = Field(description="Deploy timestamp (ISO 8601 string)")
     creator_address: str = Field(default="", description="Address that deployed token")
-    remaining_supply: str = Field(description="Remaining mintable supply as string")
-    current_supply: str = Field(description="Currently minted supply as string")
+    remaining_supply: Decimal = Field(description="Remaining mintable supply")
+    current_supply: Decimal = Field(description="Currently minted supply")
     holders: int = Field(description="Current number of token holders")
+
+    @field_serializer("max_supply", "limit_per_mint", "remaining_supply", "current_supply")
+    def serialize_dec_to_str(self, v: Decimal, _info):
+        return str(v) if v is not None else None
 
 
 BRC20InfoItem = Brc20InfoItem
@@ -29,9 +34,13 @@ class AddressBalance(OrmConfig):
     pkscript: str = Field(default="", description="The pkscript (always empty for Phase 8-3A)")
     ticker: str = Field(description="The BRC20 ticker symbol")
     wallet: str = Field(description="The holder's address (field named 'wallet' not 'address')")
-    overall_balance: str = Field(description="Total balance held as string")
-    available_balance: str = Field(description="Available balance as string (same as overall_balance)")
+    overall_balance: Decimal = Field(description="Total balance held")
+    available_balance: Decimal = Field(description="Available balance (same as overall_balance)")
     block_height: int = Field(description="Last block height affecting this balance")
+
+    @field_serializer("overall_balance", "available_balance")
+    def serialize_balance_to_str(self, v: Decimal, _info):
+        return str(v) if v is not None else None
 
 
 class Op(OrmConfig):
@@ -40,7 +49,7 @@ class Op(OrmConfig):
     txid: Optional[str] = Field(None, description="Traditional transaction ID (txid)")
     op: str = Field(description="BRC-20 operation type (deploy, mint, transfer)")
     ticker: str = Field(description="Ticker concerned")
-    amount_str: Optional[str] = Field(None, description="Operation amount")
+    amount: Optional[Decimal] = Field(None, description="Operation amount")
     block_height: int = Field(description="Block height")
     block_hash: str = Field(description="Block hash")
     tx_index: int = Field(description="Transaction index in block")
@@ -48,6 +57,10 @@ class Op(OrmConfig):
     from_address: Optional[str] = Field(None, description="Sender address (for transfers)")
     to_address: Optional[str] = Field(None, description="Recipient address (for transfers)")
     valid: Optional[bool] = Field(None, description="Is the BRC-20 operation valid?")
+
+    @field_serializer("amount")
+    def serialize_amount_to_str(self, v: Decimal, _info):
+        return str(v) if v is not None else None
 
 
 class IndexerStatus(BaseModel):

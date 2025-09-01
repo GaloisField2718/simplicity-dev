@@ -43,6 +43,7 @@ class BRC20Processor:
         self.utxo_service = UTXOResolutionService(bitcoin_rpc)
         self.logger = structlog.get_logger()
         self.current_block_timestamp = None
+        self._pending_balance_updates = {}
 
     def _convert_block_timestamp(self, block_timestamp: int) -> datetime:
         if not isinstance(block_timestamp, int) or block_timestamp <= 0:
@@ -332,23 +333,63 @@ class BRC20Processor:
         intermediate_balances: Optional[Dict] = None,
     ):
         normalized_ticker = ticker.upper()
-        start_balance_str = self.validator.get_balance(address, normalized_ticker, intermediate_balances)
+        start_balance = self.validator.get_balance(address, normalized_ticker, intermediate_balances)
         from src.utils.amounts import add_amounts, subtract_amounts, compare_amounts
 
         if amount_delta.startswith("-"):
             amount_to_subtract = amount_delta[1:]
-            if compare_amounts(start_balance_str, amount_to_subtract) < 0:
+            if compare_amounts(start_balance, amount_to_subtract) < 0:
                 raise BRC20Exception(
                     BRC20ErrorCodes.INSUFFICIENT_BALANCE,
                     f"Insufficient balance for {op_type} for address {address}",
                 )
-            new_balance_str = subtract_amounts(start_balance_str, amount_to_subtract)
+            new_balance = subtract_amounts(start_balance, amount_to_subtract)
         else:
-            new_balance_str = add_amounts(start_balance_str, amount_delta)
-        db_balance_obj = Balance.get_or_create(self.db, address, normalized_ticker)
-        db_balance_obj.balance = new_balance_str
+            new_balance = add_amounts(start_balance, amount_delta)
+        self._pending_balance_updates[(address, normalized_ticker)] = new_balance
+
         if intermediate_balances is not None:
-            intermediate_balances[(address, normalized_ticker)] = new_balance_str
+            intermediate_balances[(address, normalized_ticker)] = new_balance
+
+    def flush_pending_balances(self) -> None:
+        """
+        Apply all pending balance updates to the database.
+        This method must be called at the end of block processing.
+        """
+        if not self._pending_balance_updates:
+            return
+
+        updates_count = len(self._pending_balance_updates)
+        addresses = list(set(addr for addr, _ in self._pending_balance_updates.keys()))
+
+        try:
+            for (address, ticker), new_balance in self._pending_balance_updates.items():
+                db_balance_obj = Balance.get_or_create(self.db, address, ticker)
+                db_balance_obj.balance = new_balance
+
+            self.db.commit()
+
+            self._pending_balance_updates.clear()
+
+            self.logger.debug("Flushed pending balance updates", updates_count=updates_count, addresses=addresses)
+
+        except Exception as e:
+            self.logger.error(
+                "Failed to flush pending balance updates", error=str(e), pending_updates_count=updates_count
+            )
+            self.db.rollback()
+            raise
+
+    def clear_pending_balances(self) -> None:
+        """
+        Clear all pending balance updates without applying them.
+        This method should be called when block processing fails and rollback is needed.
+        """
+        if self._pending_balance_updates:
+            self.logger.debug(
+                "Clearing pending balance updates due to rollback", updates_count=len(self._pending_balance_updates)
+            )
+            self._pending_balance_updates.clear()
 
     def get_first_input_address(self, tx_info: dict) -> Optional[str]:
         try:
@@ -513,7 +554,7 @@ class BRC20Processor:
 
         structure_validation = self.parser.validate_multi_transfer_structure(tx, transfer_ops)
         if not structure_validation.is_valid:
-            op_data = {"op": "transfer"}  # Placeholder for logging
+            op_data = {"op": "transfer"}
             self.log_operation(
                 op_data,
                 structure_validation,
@@ -530,7 +571,7 @@ class BRC20Processor:
 
         meta_validation, ticker, total_amount = self.parser.validate_multi_transfer_meta_rules(parsed_ops)
         if not meta_validation.is_valid:
-            op_data = {"op": "transfer", "tick": "multiple"}  # Placeholder
+            op_data = {"op": "transfer", "tick": "multiple"}
             self.log_operation(op_data, meta_validation, tx_info, transfer_ops, is_multi_transfer=True)
             return self._create_processing_result(tx_info["txid"], meta_validation, is_multi=True, op_data=op_data)
 

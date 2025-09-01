@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, UniqueConstraint
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, UniqueConstraint, Numeric
 from .base import Base
 
 
@@ -10,7 +10,7 @@ class BRC20Operation(Base):
     vout_index = Column(Integer, nullable=False)
     operation = Column(String, nullable=False)
     ticker = Column(String, index=True, nullable=True)
-    amount = Column(String, nullable=True)
+    amount = Column(Numeric(precision=38, scale=8), nullable=True)
     from_address = Column(String, nullable=True, index=True)
     to_address = Column(String, nullable=True, index=True)
     block_height = Column(Integer, index=True, nullable=False)

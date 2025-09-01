@@ -14,42 +14,42 @@ def test_imports():
     print("Testing imports...")
     try:
         import importlib
-        importlib.import_module("models.base")
+        importlib.import_module("src.models.base")
         print("✅ Base model imported successfully")
     except ImportError as e:
         print(f"❌ Failed to import Base model: {e}")
         assert False
     try:
         import importlib
-        importlib.import_module("models.deploy")
+        importlib.import_module("src.models.deploy")
         print("✅ Deploy model imported successfully")
     except ImportError as e:
         print(f"❌ Failed to import Deploy model: {e}")
         assert False
     try:
         import importlib
-        importlib.import_module("models.balance")
+        importlib.import_module("src.models.balance")
         print("✅ Balance model imported successfully")
     except ImportError as e:
         print(f"❌ Failed to import Balance model: {e}")
         assert False
     try:
         import importlib
-        importlib.import_module("models.transaction")
+        importlib.import_module("src.models.transaction")
         print("✅ BRC20Operation model imported successfully")
     except ImportError as e:
         print(f"❌ Failed to import BRC20Operation model: {e}")
         assert False
     try:
         import importlib
-        importlib.import_module("models.block")
+        importlib.import_module("src.models.block")
         print("✅ ProcessedBlock model imported successfully")
     except ImportError as e:
         print(f"❌ Failed to import ProcessedBlock model: {e}")
         assert False
     try:
         import importlib
-        importlib.import_module("config")
+        importlib.import_module("src.config")
         print("✅ Configuration imported successfully")
     except ImportError as e:
         print(f"❌ Failed to import configuration: {e}")
@@ -68,9 +68,9 @@ def test_critical_rules_compliance():
     """Test compliance with critical rules."""
     print("\nTesting critical rules compliance...")
 
-    from models.deploy import Deploy
-    from models.balance import Balance
-    from models.transaction import BRC20Operation
+    from src.models.deploy import Deploy
+    from src.models.balance import Balance
+    from src.models.transaction import BRC20Operation
     from datetime import datetime
 
     # Test 1: String amounts
@@ -162,7 +162,7 @@ def test_database_schema():
     """Test database schema creation."""
     print("\nTesting database schema...")
     try:
-        from models.base import Base
+        from src.models.base import Base
         table_names = list(Base.metadata.tables.keys())
         expected_tables = [
             "deploys",
